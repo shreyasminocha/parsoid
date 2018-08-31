@@ -2,7 +2,8 @@
 
 namespace Parsoid\Lib\Utils;
 
-require_once "../../../config/WikitextConstants.php";
+require_once (__DIR__.'/../lib/config/WikitextConstants.php');
+//require_once "lib/config/WikitextConstants.php";
 use Parsoid\Lib\Config\WikitextConstants;
 
 class DU {

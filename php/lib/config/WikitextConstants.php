@@ -402,3 +402,6 @@ class WikitextConstants {
 		self::$LCNameMap['add'] = 'A';
 	}
 }
+
+?>
+

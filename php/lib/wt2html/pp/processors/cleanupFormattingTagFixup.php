@@ -2,7 +2,7 @@
 
 namespace Parsoid\Lib\Wt2Html\PP\Processors;
 
-require_once "../../../utils/DU.php";
+require_once "lib/utils/DU.php";
 
 use Parsoid\Lib\Utils\DU;
 
