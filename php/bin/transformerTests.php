@@ -2,90 +2,6 @@
 
 /* Starting point for transformerTests.php
 */
-/*
-namespace Parsoid\Lib\Wt2Html\PP\Processors;
-
-require_once 'vendor/autoload.php';
-
-use RemexHtml\DOM;
-use RemexHtml\Tokenizer;
-use RemexHtml\TreeBuilder;
-use RemexHtml\Serializer;
-
-require_once "lib/config/Env.php";
-require_once "lib/config/WikitextConstants.php";
-require_once "lib/utils/DU.php";
-require_once "lib/wt2html/pp/processors/computeDSR.php";
-require_once "lib/wt2html/pp/processors/cleanupFormattingTagFixup.php";
-
-use Parsoid\Lib\Config\Env;
-use Parsoid\Lib\Config\WikitextConstants;
-use Parsoid\Lib\Utils\DU;
-
-function buildDOM( $domBuilder, $text ) {
-	$treeBuilder = new TreeBuilder\TreeBuilder( $domBuilder, [ 'ignoreErrors' => true ] );
-	$dispatcher = new TreeBuilder\Dispatcher( $treeBuilder );
-	$tokenizer = new Tokenizer\Tokenizer( $dispatcher, $text, [] );
-	$tokenizer->execute( [] );
-	return $domBuilder->getFragment();
-}
-*/
-/* --------------------------------------------------------------------------------------------------
- * 1. parse.js --dump dom:pre-dsr,dom:post-dsr --pageName TITLE --prefix WIKI < /dev/null >&! /tmp/out
- * 2. extract dumped doms from /tmp/out into TITLE.predsr.html and TITLE.postdsr.html
- * 3. feed the TITLE.predsr.html file to this script alongwith the wikitext size for the file
- *    which you can get looking at body.dsr[1] in TITLE.postdsr.html
- * 4. verify that computed dsrs are identical
- *
- * All this could be automated. But for now, manual works.
- * -------------------------------------------------------------------------------------------------- */
-/*
-function test( $argc, $argv, $dumpDOM = false ) {
-	WikitextConstants::init();
-	DU::init();
-
-	if ( $argc < 3 ) {
-		print "USAGE: php $argv[0] COMMAND FILE [optional-args]\n";
-		exit(1);
-	}
-
-	$func = $argv[1];
-	$fileName = $argv[2];
-
-	$domBuilder = new DOM\DOMBuilder;
-	$serializer = new DOM\DOMSerializer($domBuilder, new Serializer\HtmlFormatter);
-	$env = new Env();
-
-	$text = file_get_contents( $fileName );
-	$dom = buildDOM( $domBuilder, $text );
-
-	$time = -microtime( true );
-	switch ( $func ) {
-		case 'computeDSR' :
-			if ( $argc < 4 ) {
-				print "Please provide end-offset to compute DSR\n";
-				print "USAGE: php $argv[0] computeDSR FILE END-OFFSET\n";
-				exit(1);
-			}
-			computeDSR( $dom->getElementsByTagName('body')->item(0),
-				$env, [ 'sourceOffsets' => [ 0, $argv[3] ], 'attrExpansion' => false ] );
-			break;
-		case 'cleanupFormattingTagFixup' :
-			cleanupFormattingTagFixup( $dom->getElementsByTagName('body')->item(0), $env );
-			break;
-	}
-	$time += microtime( true );
-
-	print "time - $time\n";
-
-	if ( $dumpDOM ) {
-		print $serializer->getResult();
-	}
-}
-
-test( $argc, $argv, true );
-*/
-
 
 /*
 Token transform unit test system
@@ -146,31 +62,20 @@ require_once (__DIR__.'/../lib/config/WikitextConstants.php');
 require_once (__DIR__.'/../lib/wt2html/parser.defines.php');
 require_once (__DIR__.'/../lib/wt2html/tt/QuoteTransformer.php');
 
-//var ListHandler = require('../lib/wt2html/tt/ListHandler.js').ListHandler;
-//var ParagraphWrapper = require('../lib/wt2html/tt/ParagraphWrapper.js').ParagraphWrapper;
-//var PreHandler = require('../lib/wt2html/tt/PreHandler.js').PreHandler;
-//var TokenStreamPatcher = require('../lib/wt2html/tt/TokenStreamPatcher.js').TokenStreamPatcher;
-//var BehaviorSwitchHandler = require('../lib/wt2html/tt/BehaviorSwitchHandler.js').BehaviorSwitchHandler;
-//var SanitizerHandler = require('../lib/wt2html/tt/Sanitizer.js').SanitizerHandler;
-//require_once('../lib/utils/Util.js');
-//require_once('yargs');
-//require_once('fs');
-
 use Parsoid\Lib\Config;
 use Parsoid\Lib\Config\Env;
 use Parsoid\Lib\Config\WikitextConstants;
 use Parsoid\Lib\Wt2html\TT;
 use Parsoid\Lib\Wt2html;
 
-/*
-$defines = 
-$QuoteTransformer = 
-$Util = 
-$yargs = 
-$fs = 
-*/
+function makeMap( $a ) {
+	$map = [];
+	foreach ( $a as $e ) {
+		$map[$e[0]] = $e[1];
+	}
 
-
+	return $map;
+}
 
 class console {
 	public function log($string) {
@@ -238,13 +143,12 @@ class MockTTM {
 		$value = $a->rank - $b->rank;
 		if ($value === 0) return 0;
 		return ($value < 0) ? -1 : 1;
-		return 0;
 	}
 
 	public function addTransform($transformation, $debugName, $rank, $type, $name) {
 		global $console;
 
-		$t = Parsoid\Lib\Config\makeMap([
+		$t = makeMap([
 			[ 'rank', $rank ],
 			[ 'name', $debugName ],
 			[ 'transform', $transformation ],
@@ -255,24 +159,20 @@ class MockTTM {
 			$this->defaultTransformers->push($t);
 		} else {
 			$key = self::tokenTransformersKey($type, $name);
-			$tArray = $this->tokenTransformers[$key];
-			if (!$tArray) {
-				$tArray = $this->tokenTransformers[$key] = [];
+			if (!isset($this->tokenTransformers[$key])) {
+				$this->tokenTransformers[$key] = [];
 			}
+			$tArray = $this->tokenTransformers[$key];
 
 			// assure no duplicate transformers
-//			$console->assert($tArray->every(function($tr) {
-//				return $tr->rank !== $t->rank;
-//			}), "Trying to add a duplicate transformer: " . $t->name);
-
-			$console->assert(function() {
-					foreach ($tr as $value) {
-						if ($t->rank === $value->rank) {    //self::
+			$console->assert((function() use ($tArray, $t) {
+					foreach ($tArray as $value) {
+						if ($t->rank === $value->rank) {
 							return true;
 						}
 					}
 					return false;
-				}, "Trying to add a duplicate transformer: " . $t->name);
+				})(), "Trying to add a duplicate transformer: " . $t['name']);
 
 			$tArray[] = $t;
 			usort($tArray, "self::_cmpTransformations");
@@ -285,7 +185,7 @@ class MockTTM {
 		while ($i < $n && $rank !== $transformers[$i]->rank) {
 			$i++;
 		}
-		$transformers.splice($i, 1);
+		$transformers = array_splice($transformers, $i, 1);
 	}
 
 	public static function removeTransform($rank, $type, $name) {
@@ -294,19 +194,18 @@ class MockTTM {
 			removeMatchingTransform($this->defaultTransformers, $rank);
 		} else {
 			$key = tokenTransformersKey($type, $name);
-			$tArray = $this->tokenTransformers[$key];
-			if ($tArray) {
-				removeMatchingTransform($tArray, $rank);
+			if (isset($this->tokenTransformers[$key])) {
+				removeMatchingTransform($this->tokenTransformers[$key], $rank);
 			}
 		}
 	}
 
 	public function getTransforms($token, $minRank) {
 		$tkType = $MockTTM.tkConstructorToTkTypeMap[$token->type];
-		$key = self::tokenTransformersKey($tkType, $token.name);
+		$key = self::tokenTransformersKey($tkType, $token->name);
 		$tts = $this->tokenTransformers[$key] || [];
 		if (sizeof($this->defaultTransformers) > 0) {
-			$tts = $tts.concat($this->defaultTransformers);
+			$tts = array_merge($tts, $this->defaultTransformers);
 			$tts.sort($this->_cmpTransformations);
 		}
 
@@ -323,26 +222,27 @@ class MockTTM {
 // Use the TokenTransformManager.js guts (extracted essential functionality)
 // to dispatch each token to the registered token transform function
 	public static function ProcessTestFile($fileName) {
-		$transformerName;
-		$testName;
-		$result;
-		$testFile = $fs.readFileSync($fileName, 'utf8');
-		$testLines = $testFile->split('\n');
+		$testFile = file_get_contents($fileName);
+		$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
+		$testLines = explode("\n", $testFile);
 		for ($index = 0; $index < sizeof($testLines); $index++) {
 			$line = $testLines[$index];
-			switch ($line->charAt(0)) {
+			if (mb_strlen($line) < 1) {
+				continue;
+			}
+			switch ($line[0]) {
 				case '#':	// comment line
 				case ' ':	// blank character at start of line
 				case '':	// empty line
 					break;
 				case ':':
-					$transformerName = $line->substr(2);
+					$transformerName = substr($line, 2);
 					break;
 				case '!':	// start of test with name
-					$testName = $line->substr(2);
+					$testName = substr($line, 2);
 					break;
 				case '[':	// desired result json string for test result verification
-					if ($result !== undefined && sizeof($result->tokens) !== 0) {
+					if (isset($result) && sizeof($result->tokens) !== 0) {
 						$stringResult = json_decode($result->tokens);
 						if ($stringResult === $line) {
 							$console->log($testName . ' ==> passed\n');
@@ -352,16 +252,16 @@ class MockTTM {
 							$console->log('result line ===> ' . $stringResult . "\n");
 						}
 					}
-					$result = undefined;
+					$result = null;
 					break;
 				case '{':
 				default:
-					if (!$result) {
+					if (!isset($result)) {
 						$result = [ 'tokens' => [] ];
 					}
-					$token = json_encode($line);
-					if ($token.constructor !== String) {	// cast object to token type
-                        $token->constructor = $token->prototype = $defines[$token->type];
+					$token = json_decode($line);
+					if ($token->constructor !== String) {	// cast object to token type
+                  $token->constructor = $token->prototype = $defines[$token->type];
 					}
 					$res = [ 'token' => $token ];
 					$ts = $this->getTransforms($token, 2.0);
@@ -370,13 +270,13 @@ class MockTTM {
 					$numTransforms = sizeof($ts->transforms);
 					while ($j < $numTransforms && ($token === $res->token)) {
 						$transformer = $ts->transforms[$j];
-						if ($transformerName === $transformer->name->substr(0, sizeof($transformerName))) {
+						if ($transformerName === substr($transformer->name, 0, sizeof($transformerName))) {
 							// Transform the token.
 							$res = $transformer->transform($token, $this);
 							if ($res->tokens) {
-								$result->tokens = $result->tokens->concat($res->tokens);
+								$result->tokens = array_merge($result->tokens, $res->tokens);
 							} else if ($res->token && $res->token !== $token) {
-								$result->tokens = $result->tokens.concat($res->token);
+								$result->tokens[] = $res->token;
 							}
 						}
 						$j++;
@@ -426,16 +326,17 @@ class MockTTM {
 // Use the TokenTransformManager.js guts (extracted essential functionality)
 // to dispatch each token to the registered token transform function
 	public function ProcessWikitextFile($tokenTransformer, $fileName) {
-		$result;
+		global $console;
+
 		$testFile = file_get_contents($fileName);
-		$testFile = mb_convert_encoding($testFile, 'UTF-8',mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
+		$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
 		$testLines = explode("\n", $testFile);
 		$pipeLines = self::CreatePipelines($testLines);
 		$pipeLinesLength = sizeof($pipeLines);
 		for ($index = 0; $index < $pipeLinesLength; $index++) {
-			if ($pipeLines[$index] !== undefined) {
+			if (isset($pipeLines[$index])) {
 				$tokenTransformer->manager->pipelineId = $index;
-				$pipeLength = sizeof(pipeLines[index]);
+				$pipeLength = sizeof($pipeLines[$index]);
 				for ($element = 0; $element < $pipeLength; $element++) {
 					$line = substr($testLines[($pipeLines[$index])[$element]], 36);
 					switch ($line{0}) {
@@ -448,11 +349,11 @@ class MockTTM {
 								$console->log('line to debug => ' . $line);
 								$console->log('result line ===> ' . $stringResult . "\n");
 							}
-							$result = undefined;
+							$result = null;
 							break;
 						case '{':
 						default:
-							if (!$result) {
+							if (!isset($result)) {
 								$result = [ 'tokens' => [] ];
 							}
 							$token = json_encode($line);
@@ -470,9 +371,9 @@ class MockTTM {
 								// Transform the token.
 								$res = $transformer->transform($token, $this);
 								if ($res->tokens) {
-									$result->tokens = $result->tokens->concat($res->tokens);
+									$result->tokens = array_merge($result->tokens, $res->tokens);
 								} else if ($res->token && $res->token !== $token) {
-									$result->tokens = $result->tokens->concat($res->token);
+									$result->tokens[] = $res->token;
 								}
 								$j++;
 							}
@@ -484,68 +385,24 @@ class MockTTM {
 	}
 
 	public static function unitTest($tokenTransformer, $testFile) {
-		$console->log('Starting stand alone unit test running file ' . $testFile . '\n');
+		global $console;
+
+		$console->log("Starting stand alone unit test running file " . $testFile . "\n");
 		$tokenTransformer->manager->ProcessTestFile($testFile);
-		$console->log('Ending stand alone unit test running file ' . $testFile . '\n');
+		$console->log("Ending stand alone unit test running file " . $testFile . "\n");
 	}
 
 	public static function wikitextTest($tokenTransformer, $testFile) {
 		global $console;
-		$console->log('Starting stand alone wikitext test running file ' . $testFile . '\n');
+
+		$console->log("Starting stand alone wikitext test running file " . $testFile . "\n");
 		$tokenTransformer->manager->ProcessWikitextFile($tokenTransformer, $testFile);
-		$console->log('Ending stand alone wikitext test running file ' . $testFile . '\n');
+		$console->log("Ending stand alone wikitext test running file " . $testFile . "\n");
 	}
-/*
-var opts = yargs.usage('Usage: $0 [options] --TransformerName --inputFile /path/filename', {
-	help: {
-		description: [
-			'transformTest.js supports parsoid generated and manually created',
-			'test validation. See tests/transformTests.txt to examine and run',
-			'a manual test. The --manual flag is optional defaulting to parsoid',
-			'generated test format (which has machine generated context to aid',
-			'in debugging. The --log option provides additional debug content.',
-			'Current handlers supported are: QuoteTransformer, ListHandler',
-			'ParagraphWrapper, PreHandler.',
-			'TokenStreamPatcher, BehaviorSwitchHandler and SanitizerHandler are',
-			'partially implemented, being debugged but not yet usable.\n'
-		].join(' ')
-	},
-	manual: {
-		description: 'optional: use manually test format',
-		'boolean': true,
-		'default': false
-	},
-	log: {
-		description: 'optional: display handler log info',
-		'boolean': true,
-		'default': false
-	},
-	QuoteTransformer: {
-		description: 'Run QuoteTransformer tests'
-	},
-	ListHandler: {
-		description: 'Run ListHandler tests'
-	},
-	ParagraphWrapper: {
-		description: 'Run ParagraphWrapper tests'
-	},
-	PreHandler: {
-		description: 'Run PreHandler tests'
-	},
-	TokenStreamPatcher: {
-		description: 'Run TokenStreamPatcher tests'
-	},
-	BehaviorSwitchHandler: {
-		description: 'Run BehaviorSwitchHandler tests'
-	},
-	SanitizerHandler: {
-		description: 'Run SanitizerHandler tests'
-	}
-*/
 };
 
 function selectTestType($commandLine, $manager, $handler) {
-	if ($commandLine->manual) {
+	if (isset($commandLine->manual)) {
 		$manager->unitTest($handler, $commandLine->inputFile);
 	} else {
 		$manager->wikitextTest($handler, $commandLine->inputFile);
@@ -595,7 +452,7 @@ function runTests($argc, $argv) {
 		return;
 	}
 
-	if (!$opts->inputFile) {
+	if (!isset($opts->inputFile)) {
 		$console->log('must specify [--manual] [--log] --TransformerName --inputFile /path/filename');
 		$console->log('type: "node bin/transformerTests.js --help" for more information');
 		return;

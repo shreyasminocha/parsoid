@@ -4,25 +4,13 @@
  * @module - port of javascript QuoteTransformer.js to php
  */
 
-//'use strict';
-
-//var TokenHandler = require('./TokenHandler.js');
-//var defines = require('../parser.defines.js');
-
 namespace Parsoid\Lib\Wt2html\TT;
 
-//require_once "/Users/sbailey/parsing/parsoid/php/lib/wt2html/tt/TokenHandler.php";
 require_once (__DIR__.'/TokenHandler.php');
 require_once (__DIR__.'/../parser.defines.php');
 
 use Parsoid\Lib\Wt2html\TT;
 use Parsoid\Lib\Wt2html;
-
-// define some constructor shortcuts
-// var TagTk = defines.TagTk;
-// var SelfclosingTagTk = defines.SelfclosingTagTk;
-// var EndTagTk = defines.EndTagTk;
-
 
 /**
  * @class
