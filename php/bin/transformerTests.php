@@ -67,6 +67,9 @@ use Parsoid\Lib\Config\Env;
 use Parsoid\Lib\Config\WikitextConstants;
 use Parsoid\Lib\Wt2html\TT;
 use Parsoid\Lib\Wt2html;
+use Parsoid\Lib\Wt2html\TagTk;
+use Parsoid\Lib\Wt2html\SelfclosingTagTk;
+use Parsoid\Lib\Wt2html\NlTk;
 
 function makeMap( $a ) {
 	$map = [];
@@ -106,6 +109,7 @@ class MockTTM {
 		$this->options = $options;
 		$this->defaultTransformers = [];	// any transforms
 		$this->tokenTransformers   = [];	// non-any transforms
+//		$this->console = new console;
 	}
 
 	public static function log() {
@@ -201,7 +205,7 @@ class MockTTM {
 	}
 
 	public function getTransforms($token, $minRank) {
-		$tkType = $MockTTM.tkConstructorToTkTypeMap[$token->type];
+		$tkType = $this->tkConstructorToTkTypeMap[$token->type];
 		$key = self::tokenTransformersKey($tkType, $token->name);
 		$tts = $this->tokenTransformers[$key] || [];
 		if (sizeof($this->defaultTransformers) > 0) {
@@ -221,7 +225,7 @@ class MockTTM {
 
 // Use the TokenTransformManager.js guts (extracted essential functionality)
 // to dispatch each token to the registered token transform function
-	public static function ProcessTestFile($fileName) {
+	public function ProcessTestFile($fileName) {
 		$testFile = file_get_contents($fileName);
 		$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
 		$testLines = explode("\n", $testFile);
@@ -260,8 +264,16 @@ class MockTTM {
 						$result = [ 'tokens' => [] ];
 					}
 					$token = json_decode($line);
-					if ($token->constructor !== String) {	// cast object to token type
-                  $token->constructor = $token->prototype = $defines[$token->type];
+//					if ($token->constructor !== String) {	// cast object to token type
+//                      $token->constructor = $token->prototype = $defines[$token->type];
+//			        }
+					switch($token->type) {
+						case "SelfclosingTagTk":
+							$token = new SelfclosingTagTk($token->name, $token->attribs, $token->dataAttribs);
+							break;
+						default:
+							$abc = 123;
+							break;
 					}
 					$res = [ 'token' => $token ];
 					$ts = $this->getTransforms($token, 2.0);

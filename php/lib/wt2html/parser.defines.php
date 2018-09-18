@@ -365,8 +365,9 @@ class SelfclosingTagTk extends Token {
 	 * @param {KV[]} attribs
 	 * @param {Object} dataAttribs
 	 */
-	public static function constructor($name, $attribs, $dataAttribs) {
-		super();
+	public function __construct($name, $attribs, $dataAttribs) {
+		// super();
+		//parent::__construct($manager, $options);  // there is no constructor in parent Token class
 			/** @type {string} */
 		$this->name = $name;
 			/** @type {KV[]} */
