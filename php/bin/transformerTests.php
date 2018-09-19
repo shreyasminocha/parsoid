@@ -100,7 +100,7 @@ function console_log($arguments) {
 
 class MockTTM {
 	public $t;
-	public static $console;
+	public $console;
 	public $env;
 
 	public function __construct($env, $options) {
@@ -109,10 +109,11 @@ class MockTTM {
 		$this->options = $options;
 		$this->defaultTransformers = [];	// any transforms
 		$this->tokenTransformers   = [];	// non-any transforms
-//		$this->console = new console;
+		$this->console = new console;
+		$this->init();
 	}
 
-	public static function log() {
+	public function log() {
 		$output = $arguments[0];
 		for ($index = 1; $index < sizeof($arguments); $index++) {
             if (is_callable($arguments[$index])) {
@@ -124,11 +125,11 @@ class MockTTM {
 		$console->log($output);
 	}
 
-    public static function init()
+    public function init()
     {
 // Map of: token constructor ==> transfomer type
 // Used for returning active transformers for a token
-        self::$tkConstructorToTkTypeMap = makeMap([
+        $this->tkConstructorToTkTypeMap = makeMap([
             ['String', 'text'],
             ['NlTk', 'newline'],
             ['CommentTk', 'comment'],

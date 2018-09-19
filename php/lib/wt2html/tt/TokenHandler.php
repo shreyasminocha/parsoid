@@ -19,18 +19,19 @@ class TokenHandler {
 		$this->manager = $manager;
 		$this->env = $manager->env;
 		$this->options = $options;
-		// $this->init();
+		$this->init();
 	}
 
 	/**
 	 */
-	public function init() {
+	public function init() {    // subclass must implement init and not call this method
+		global $console;
 		$console->assert(false, '`init` unimplemented!');
 	}
 
 	/**
 	 */
-	public static function resetState($opts) {
+	public function resetState($opts) {
 		$this->atTopLevel = $opts && $opts->toplevel;
 	}
 }

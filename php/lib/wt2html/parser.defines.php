@@ -78,7 +78,7 @@ class Token {
 	 * @return {any}
 	 */
 	public static function getAttribute($name) {
-		requireUtil();
+		// requireUtil();
 		return $Util->lookup($this->attribs, $name);
 	}
 
@@ -89,7 +89,7 @@ class Token {
 	 * @param {any} value
 	 */
 	public static function setAttribute($name, $value) {
-		requireUtil();
+		// requireUtil();
 		// First look for the attribute and change the last match if found.
 		for ($i = $this->attribs->length - 1; $i >= 0; $i--) {
 			$kv = $this->attribs[$i];
@@ -139,7 +139,7 @@ class Token {
 	 * @return {boolean} return.fromsrc Whether we needed to get the source of the attribute to round-trip it.
 	 */
 	public static function getAttributeShadowInfo($name) {
-		requireUtil();
+		// requireUtil();
 		$curVal = $Util->lookup($this->attribs, $name);
 
 		// Not the case, continue regular round-trip information.
@@ -197,7 +197,7 @@ class Token {
 	 * @param {any} value The value to add to the attribute.
 	 */
 	public static function addSpaceSeparatedAttribute($name, $value) {
-		requireUtil();
+		// requireUtil();
 		$curVal = $Util->lookupKV($this->attribs, $name);
 		// vals;
 		if ($curVal !== null) {
@@ -374,6 +374,8 @@ class SelfclosingTagTk extends Token {
 		$this->attribs = $attribs || [];
 			/** @type {Object} */
 		$this->dataAttribs = $dataAttribs || [];
+
+		$this->type = "SelfclosingTagTk";
 	}
 
 	/**

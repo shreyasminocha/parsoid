@@ -32,9 +32,8 @@ class QuoteTransformer extends TokenHandler {
 //		$this->manager->addTransform($this->onQuote->bind($this),
 //			'QuoteTransformer:onQuote', $this->quoteAndNewlineRank, 'tag', 'mw-quote');
 		$onQuoteTransformer = array($this, 'onQuote');
-		$quoteAndNewlineRankTransformer = array($this, 'quoteAndNewlineRank');
 		$this->manager->addTransform($onQuoteTransformer,
-			'QuoteTransformer:onQuote', $quoteAndNewlineRankTransformer, 'tag', 'mw-quote');
+			'QuoteTransformer:onQuote', self::quoteAndNewlineRank, 'tag', 'mw-quote');
 		$this->reset();
 	}
 
