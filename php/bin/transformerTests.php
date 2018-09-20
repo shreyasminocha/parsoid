@@ -166,8 +166,8 @@ class MockTTM {
 			$key = self::tokenTransformersKey($type, $name);
 			if (!isset($this->tokenTransformers[$key])) {
 				$this->tokenTransformers[$key] = [];
+				$tArray = $this->tokenTransformers[$key];
 			}
-			$tArray = $this->tokenTransformers[$key];
 
 			// assure no duplicate transformers
 			$console->assert((function() use ($tArray, $t) {
@@ -307,11 +307,14 @@ class MockTTM {
 	private static function CreatePipelines($lines) {
 		$numberOfTextLines = sizeof($lines);
 		$maxPipelineID = 0;
-		$LineToPipeMap = array($numberOfTextLines);
+		$LineToPipeMap = array();
+		$LineToPipeMap = array_pad($LineToPipeMap, $numberOfTextLines, 0);
 		$i;
 		$pipe;
 		for ($i = 0; $i < $numberOfTextLines; ++$i) {
 			$number = substr($lines[$i], 0, 4);
+			preg_match('/\\d+/', $number, $number);
+			$number = implode("", $number);
 			if (ctype_digit($number)) {
 				$pipe = intval($number, 10);    // pipeline ID's should not exceed 9999\
 				if ($maxPipelineID < $pipe) {
@@ -322,15 +325,12 @@ class MockTTM {
 				$LineToPipeMap[$i] = $pipe;
 			}
 		}
-		$pipelines = array($maxPipelineID + 1);
+		$pipelines = array();
+		$pipelines = array_pad($pipelines, $maxPipelineID + 1, []);
 		for ($i = 0; $i < $numberOfTextLines; ++$i) {
 			$pipe = $LineToPipeMap[$i];
 			if (!is_nan($pipe)) {
-				if (isset($pipelines[$pipe])) {
-					$pipelines[$pipe] = [$i];
-				} else {
-					$pipelines[$pipe]->push($i);
-				}
+				$pipelines[$pipe][] = $i;
 			}
 		}
 		return $pipelines;
