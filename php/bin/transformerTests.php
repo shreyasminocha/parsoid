@@ -65,11 +65,12 @@ require_once (__DIR__.'/../lib/wt2html/tt/QuoteTransformer.php');
 use Parsoid\Lib\Config;
 use Parsoid\Lib\Config\Env;
 use Parsoid\Lib\Config\WikitextConstants;
-use Parsoid\Lib\Wt2html\TT;
-use Parsoid\Lib\Wt2html;
 use Parsoid\Lib\Wt2html\TagTk;
+use Parsoid\Lib\Wt2html\EndTagTk;
 use Parsoid\Lib\Wt2html\SelfclosingTagTk;
 use Parsoid\Lib\Wt2html\NlTk;
+use Parsoid\Lib\Wt2html\CommentTk;
+use Parsoid\Lib\Wt2html\EOFTk;
 
 function makeMap( $a ) {
 	$map = [];
@@ -163,7 +164,7 @@ class MockTTM {
 			// Record the any transformation
 			$this->defaultTransformers->push($t);
 		} else {
-			$key = self::tokenTransformersKey($type, $name);
+			$key = $this->tokenTransformersKey($type, $name);
 			if (!isset($this->tokenTransformers[$key])) {
 				$this->tokenTransformers[$key] = [];
 				$tArray = $this->tokenTransformers[$key];
@@ -206,22 +207,27 @@ class MockTTM {
 	}
 
 	public function getTransforms($token, $minRank) {
-		$tkType = $this->tkConstructorToTkTypeMap[$token->type];
-		$key = self::tokenTransformersKey($tkType, $token->name);
-		$tts = $this->tokenTransformers[$key] || [];
+		$isStr = gettype($token) == "string";
+		$type = $isStr ? "String" : $token->getType();
+		$name = $isStr ? "" : (isset($token->name) ? $token->name : "");
+		$tkType = $this->tkConstructorToTkTypeMap[$type];
+		$key = $this->tokenTransformersKey($tkType, $name);
+		# print "type: $type; name: $name; tkType: $tkType; key: $key"."\n";
+		# var_dump($this->tokenTransformers);
+		$tts = isset($this->tokenTransformers[$key]) ? $this->tokenTransformers[$key] : [];
 		if (sizeof($this->defaultTransformers) > 0) {
 			$tts = array_merge($tts, $this->defaultTransformers);
 			$tts.sort($this->_cmpTransformations);
 		}
 
 		$i = 0;
-		if ($minRank !== undefined) {
+		if ($minRank) {
 			// skip transforms <= minRank
-			while ($i < sizeof(tts) && $tts[$i]->rank <= $minRank) {
+			while ($i < sizeof($tts) && $tts[$i]->rank <= $minRank) {
 				$i += 1;
 			}
 		}
-		return [ 'first'=>$i, 'transforms'=>$tts, 'empty'=>($i >= sizeof($tts)) ];
+		return [ 'first' => $i, 'transforms' => $tts, 'empty' => ($i >= sizeof($tts)) ];
 	}
 
 // Use the TokenTransformManager.js guts (extracted essential functionality)
@@ -247,8 +253,8 @@ class MockTTM {
 					$testName = substr($line, 2);
 					break;
 				case '[':	// desired result json string for test result verification
-					if (isset($result) && sizeof($result->tokens) !== 0) {
-						$stringResult = json_decode($result->tokens);
+					if (isset($result) && sizeof($result['tokens']) !== 0) {
+						$stringResult = json_encode($result['tokens']);
 						if ($stringResult === $line) {
 							$console->log($testName . ' ==> passed\n');
 						} else {
@@ -264,32 +270,49 @@ class MockTTM {
 					if (!isset($result)) {
 						$result = [ 'tokens' => [] ];
 					}
-					$token = json_decode($line);
-//					if ($token->constructor !== String) {	// cast object to token type
-//                      $token->constructor = $token->prototype = $defines[$token->type];
-//			        }
-					switch($token->type) {
-						case "SelfclosingTagTk":
-							$token = new SelfclosingTagTk($token->name, $token->attribs, $token->dataAttribs);
-							break;
-						default:
-							$abc = 123;
+					$token = json_decode($line, true);
+					switch(gettype($token)) {
+						case "string":
+						   break;
+						case "array":
+							switch($token['type']) {
+							case "SelfclosingTagTk":
+								$token = new SelfclosingTagTk($token['name'], $token['attribs'], $token['dataAttribs']);
+								break;
+							case "TagTk":
+								$token = new TagTk($token['name'], $token['attribs'], $token['dataAttribs']);
+								break;
+							case "EndTagTk":
+								$token = new EndTagTk($token['name'], $token['attribs'], $token['dataAttribs']);
+								break;
+							case "NlTk":
+								$token = new NlTk($token['dataAttribs']['tsr']);
+								break;
+							case "EOFTk":
+								$token = new EOFTk();
+								break;
+							case "COMMENT":
+								$token = new CommentTk($token["value"], $token['dataAttribs']);
+								break;
+							}
 							break;
 					}
 					$res = [ 'token' => $token ];
+					# print $line."\n";
 					$ts = $this->getTransforms($token, 2.0);
 					// Push the token through the transformations till it morphs
-					$j = $ts->first;
-					$numTransforms = sizeof($ts->transforms);
+					$j = $ts['first'];
+					$numTransforms = sizeof($ts['transforms']);
+					# print "T: ".$token->getType().": ".$numTransforms."\n";
 					while ($j < $numTransforms && ($token === $res->token)) {
-						$transformer = $ts->transforms[$j];
+						$transformer = $ts['transforms'][$j];
 						if ($transformerName === substr($transformer->name, 0, sizeof($transformerName))) {
 							// Transform the token.
 							$res = $transformer->transform($token, $this);
-							if ($res->tokens) {
-								$result->tokens = array_merge($result->tokens, $res->tokens);
-							} else if ($res->token && $res->token !== $token) {
-								$result->tokens[] = $res->token;
+							if ($res['tokens']) {
+								$result['tokens'] = array_merge($result['tokens'], $res['tokens']);
+							} else if ($res['token'] && $res['token'] !== $token) {
+								$result['tokens'][] = $res['token'];
 							}
 						}
 						$j++;
@@ -377,10 +400,10 @@ class MockTTM {
 							$res = [ 'token' => $token ];
 
 							// Push the token through the transformations till it morphs
-							$j = $ts->first;
-							$numTransforms = sizeof($ts->transforms);
+							$j = $ts['first'];
+							$numTransforms = sizeof($ts['transforms']);
 							while ($j < $numTransforms && ($token === $res->token)) {
-								$transformer = $ts->transforms[$j];
+								$transformer = $ts['transforms'][$j];
 								// Transform the token.
 								$res = $transformer->transform($token, $this);
 								if ($res->tokens) {
@@ -511,7 +534,7 @@ function runTests($argc, $argv) {
 	}
 
 	$totalTime = microtime(true) - $startTime;
-	$console->log('Total transformer execution time = ' . totalTime . ' milliseconds');
+	$console->log('Total transformer execution time = ' . $totalTime . ' milliseconds');
 }
 
 runTests($argc, $argv);

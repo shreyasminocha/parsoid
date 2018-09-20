@@ -241,15 +241,18 @@ class TagTk extends Token {
 	 * @param {KV[]} attribs
 	 * @param {Object} dataAttribs Data-parsoid object.
 	 */
-	public static function constructor($name, $attribs, $dataAttribs) {
-		super();
+	public function __construct($name, $attribs, $dataAttribs) {
 		/** @type {string} */
 		$this->name = $name;
 		/** @type {KV[]} */
-		$this->attribs = $attribs || [];
+		$this->attribs = $attribs;
 		/** @type {Object} */
-		$this->dataAttribs = $dataAttribs || [];
+		$this->dataAttribs = $dataAttribs;
     }
+
+	public function getType() {
+		return "TagTk";
+	}
 
 	/**
 	 * @return {string}
@@ -323,14 +326,17 @@ class EndTagTk extends Token {
 	* @param {KV[]} attribs
 	* @param {Object} dataAttribs
 	*/
-	public static function constructor($name, $attribs, $dataAttribs) {
-		super();
+	public function __construct($name, $attribs, $dataAttribs) {
 			/** @type {string} */
 		$this->name = $name;
 			/** @type {KV[]} */
-		$this->attribs = $attribs || [];
+		$this->attribs = $attribs;
 			/** @type {Object} */
-		$this->dataAttribs = $dataAttribs || [];
+		$this->dataAttribs = $dataAttribs;
+	}
+
+	public function getType() {
+		return "EndTagTk";
 	}
 
 	/**
@@ -366,16 +372,16 @@ class SelfclosingTagTk extends Token {
 	 * @param {Object} dataAttribs
 	 */
 	public function __construct($name, $attribs, $dataAttribs) {
-		// super();
-		//parent::__construct($manager, $options);  // there is no constructor in parent Token class
 			/** @type {string} */
 		$this->name = $name;
 			/** @type {KV[]} */
-		$this->attribs = $attribs || [];
+		$this->attribs = $attribs;
 			/** @type {Object} */
-		$this->dataAttribs = $dataAttribs || [];
+		$this->dataAttribs = $dataAttribs;
+	}
 
-		$this->type = "SelfclosingTagTk";
+	public function getType() {
+		return "SelfclosingTagTk";
 	}
 
 	/**
@@ -551,12 +557,15 @@ class NlTk extends Token {
 	/**
 	 * @param {Array} tsr The TSR of the newline(s).
 	 */
-	public static function constructor($tsr) {
-		super();
-		if ($tsr) {
+	public function __construct($tsr) {
+		if (isset($tsr)) {
 			/** @type {Object} */
 			$this->dataAttribs = ["tsr"=>$tsr];
 		}
+	}
+
+	public function getType() {
+		return "NlTk";
 	}
 
 	/**
@@ -588,15 +597,18 @@ class CommentTk extends Token {
 	 * @param {string} value
 	 * @param {Object} dataAttribs data-parsoid object.
 	 */
-	public static function constructor($value, $dataAttribs) {
-		// super();
+	public function __construct($value, $dataAttribs) {
 		/** @type {string} */
 		$this->value = $value;
 		// won't survive in the DOM, but still useful for token serialization
-		if ($dataAttribs !== undefined) {
+		if (isset($dataAttribs)) {
 			/** @type {Object} */
 			$this->dataAttribs = $dataAttribs;
 		}
+	}
+
+	public function getType() {
+		return "CommentTk";
 	}
 
 	public static function toJSON() {
@@ -610,10 +622,17 @@ class CommentTk extends Token {
 }
 
 	/* -------------------- EOFTk -------------------- */
-	class EOFTk extends Token {
-		public static function toJSON() {
-			// return $Object->assign({type: 'EOFTk'}, $this);
-			return $this->type = "EOFtk";
+class EOFTk extends Token {
+	public function __construct() {
+	}
+
+	public static function toJSON() {
+		// return $Object->assign({type: 'EOFTk'}, $this);
+		return $this->type = "EOFtk";
+	}
+
+	public function getType() {
+		return "EOFTk";
 	}
 
 	public static function toString() {
