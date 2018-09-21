@@ -28,7 +28,7 @@ class QuoteTransformer extends TokenHandler {
 	}
 
 	public function init() {
-		$onQuoteTransformer = [[$this, 'onQuote']];
+		$onQuoteTransformer = [$this, 'onQuote'];
 		$this->manager->addTransform($onQuoteTransformer,
 			'QuoteTransformer:onQuote', self::quoteAndNewlineRank, 'tag', 'mw-quote');
 		$this->reset();
@@ -61,8 +61,10 @@ class QuoteTransformer extends TokenHandler {
  * onNewLine.
  */
 	public function onQuote($token, $tokenManager, $prevToken) {
-		$qlen = $token->value->length;
-		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "QUOTE |", json_encode($token));
+		var_dump($token);
+		$v = $token->getAttribute("value");
+		$qlen = strlen($v);
+		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "QUOTE |", json_encode($token));
 
 		if (!$this->isActive) {
 			$this->manager->addTransform($this->onNewLine->bind($this),
@@ -95,8 +97,8 @@ class QuoteTransformer extends TokenHandler {
 		return [];
 	}
 
-	public static function onAny($token) {
-		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "ANY   |",
+	public function onAny($token) {
+		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "ANY   |",
 			(!$this->isActive ? " ---> " : "") . json_encode($token)
 		);
 
@@ -108,8 +110,8 @@ class QuoteTransformer extends TokenHandler {
  * Handle NEWLINE tokens, which trigger the actual quote analysis on the
  * collected quote tokens so far.
  */
-	public static function onNewLine($token) {
-		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "NL    |",
+	public function onNewLine($token) {
+		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "NL    |",
 			(!$this->isActive ? " ---> " : "") . json_encode($token)
 		);
 
@@ -126,7 +128,7 @@ class QuoteTransformer extends TokenHandler {
 		$numitalics = 0;
 		for ($i = 1; $i < sizeof($this->chunks); $i += 2) {
 			$console->assert(sizeof($this->chunks[$i]) === 1); // quote token
-			$qlen = sizeof($this->chunks[$i][0]->value);
+			$qlen = strlen($this->chunks[$i][0]->getAttribute("value"));
 			if ($qlen === 2 || $qlen === 5) { $numitalics++; }
 			if ($qlen === 3 || $qlen === 5) { $numbold++; }
 		}
@@ -138,7 +140,7 @@ class QuoteTransformer extends TokenHandler {
 			$firstspace = -1;
 			for ($i = 1; $i < sizeof($this->chunks); $i += 2) {
 			// only look at bold tags
-				if (sizeof($this->chunks[i][0]->value) !== 3) { continue; }
+				if (strlen($this->chunks[i][0]->getAttribute("value")) !== 3) { continue; }
 			// find the first previous token which is text
 			// (this is an approximation, since the wikitext algorithm looks
 			// at the raw unparsed source here)
@@ -193,7 +195,7 @@ class QuoteTransformer extends TokenHandler {
 		$this->chunks[0]->shift(); // remove 'prevToken' before first quote.
 		$res = [ $tokens => array_combine([], $this->chunks) ];
 
-		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "----->", json_encode($res->$tokens));
+		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res->$tokens));
 
 	// prepare for next line
 		$this->reset();
@@ -214,17 +216,17 @@ class QuoteTransformer extends TokenHandler {
  */
 	public static function convertBold($i) {
 	// this should be a bold tag.
-		$console->assert($i > 0 && $this->chunks[$i]->length === 1 &&
-		sizeof($this->chunks[$i][0]->value) === 3);
+		$console->assert($i > 0 && sizeof($this->chunks[$i]) === 1 &&
+		strlen($this->chunks[$i][0]->getAttribute("value")) === 3);
 	// we're going to convert it to a single plain text ' plus an italic tag
 		$this->chunks[$i - 1]->push("'");
 		$oldbold = $this->chunks[$i][0];
-		$tsr = $oldbold->dataAttribs ? $oldbold->dataAttribs->tsr : null;
+		$tsr = $oldbold->dataAttribs ? $oldbold->dataAttribs["tsr"] : null;
 		if ($tsr) {
 			$tsr = [ $tsr[0] + 1, $tsr[1] ];
 			}
 		$newbold = new SelfclosingTagTk('mw-quote', [], [ tsr => $tsr ]);
-		$newbold->value = "''"; // italic!
+		$newbold->setAttribute("value", "''"); // italic!
 		$this->chunks[$i] = [ $newbold ];
 	}
 
@@ -234,9 +236,9 @@ class QuoteTransformer extends TokenHandler {
 		$lastboth = -1;
 		$state = '';
 
-		for ($i = 1; $i < $this->chunks->length; $i += 2) {
-			$console->assert($this->chunks[$i]->length === 1);
-			$qlen = $this->chunks[$i][0]->value->length;
+		for ($i = 1; $i < sizeof($this->chunks); $i += 2) {
+			$console->assert(sizeof($this->chunks[$i]) === 1);
+			$qlen = strlen($this->chunks[$i][0]->getAttribute("value"));
 			if ($qlen === 2) {
 				if ($state === 'i') {
 					$this->quoteToTag($i, [new EndTagTk('i')]);
@@ -314,15 +316,15 @@ class QuoteTransformer extends TokenHandler {
 		}
 		if ($state === 'b' || $state === 'ib') {
 			$this->currentChunk->push(new EndTagTk('b'));
-			$this->last->b->dataAttribs->autoInsertedEnd = true;
+			$this->last->b->dataAttribs["autoInsertedEnd"] = true;
 		}
 		if ($state === 'i' || $state === 'bi' || $state === 'ib') {
 			$this->currentChunk->push(new EndTagTk('i'));
-			$this->last->i->dataAttribs->autoInsertedEnd = true;
+			$this->last->i->dataAttribs["autoInsertedEnd"] = true;
 		}
 		if ($state === 'bi') {
 			$this->currentChunk->push(new EndTagTk('b'));
-			$this->last->b->dataAttribs->autoInsertedEnd = true;
+			$this->last->b->dataAttribs["autoInsertedEnd"] = true;
 		}
 	}
 
@@ -332,21 +334,21 @@ class QuoteTransformer extends TokenHandler {
 		$result = [];
 		$oldtag = $this->chunks[$chunk][0];
 		// make tsr
-		$tsr = $oldtag->dataAttribs ? $oldtag->dataAttribs->tsr : null;
+		$tsr = $oldtag->dataAttribs ? $oldtag->dataAttribs["tsr"] : null;
 		$startpos = $tsr ? $tsr[0] : null;
 		$endpos = $tsr ? $tsr[1] : null;
 		for ($i = 0; $i < sizeof(tags); $i++) {
 			if ($tsr) {
 				if ($i === 0 && $ignoreBogusTwo) {
-					$this->last[$tags[$i]->name]->dataAttribs->autoInsertedEnd = true;
+					$this->last[$tags[$i]->name]->dataAttribs["autoInsertedEnd"] = true;
 				} else if ($i === 2 && $ignoreBogusTwo) {
-					$tags[$i]->dataAttribs->autoInsertedStart = true;
+					$tags[$i]->dataAttribs["autoInsertedStart"] = true;
 				} else if ($tags[$i]->name === 'b') {
-					$tags[$i]->dataAttribs->tsr = [ $startpos, $startpos + 3 ];
-					$startpos = $tags[$i]->dataAttribs->tsr[1];
+					$tags[$i]->dataAttribs["tsr"] = [ $startpos, $startpos + 3 ];
+					$startpos = $tags[$i]->dataAttribs["tsr"][1];
 				} else if ($tags[$i]->name === 'i') {
-					$tags[$i]->dataAttribs->tsr = [ $startpos, $startpos + 2 ];
-					$startpos = $tags[$i]->dataAttribs->tsr[1];
+					$tags[$i]->dataAttribs["tsr"] = [ $startpos, $startpos + 2 ];
+					$startpos = $tags[$i]->dataAttribs["tsr"][1];
 				} else { $console->assert(false); }
 			}
 			$this->last[$tags[$i]->name] = ($tags[$i]->constructor === $EndTagTk) ? null : $tags[$i];

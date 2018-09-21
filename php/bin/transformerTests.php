@@ -65,6 +65,7 @@ require_once (__DIR__.'/../lib/wt2html/tt/QuoteTransformer.php');
 use Parsoid\Lib\Config;
 use Parsoid\Lib\Config\Env;
 use Parsoid\Lib\Config\WikitextConstants;
+use Parsoid\Lib\Wt2html\KV;
 use Parsoid\Lib\Wt2html\TagTk;
 use Parsoid\Lib\Wt2html\EndTagTk;
 use Parsoid\Lib\Wt2html\SelfclosingTagTk;
@@ -79,6 +80,14 @@ function makeMap( $a ) {
 	}
 
 	return $map;
+}
+
+function kvsFromArray( $a ) {
+	$kvs = [];
+	foreach ( $a as $e ) {
+		$kvs[] = new KV($e["k"], $e["v"]);
+	};
+	return $kvs;
 }
 
 class console {
@@ -146,7 +155,7 @@ class MockTTM {
 	}
 
 	public static function _cmpTransformations($a, $b) {
-		$value = $a->rank - $b->rank;
+		$value = $a["rank"] - $b["rank"];
 		if ($value === 0) return 0;
 		return ($value < 0) ? -1 : 1;
 	}
@@ -165,37 +174,29 @@ class MockTTM {
 			$this->defaultTransformers->push($t);
 		} else {
 			$key = $this->tokenTransformersKey($type, $name);
-			$tArray = $this->tokenTransformers[$key];
-			if (!isset($tArray) ) {
+			if (!isset($this->tokenTransformers[$key])) {
 				$this->tokenTransformers[$key] = [];
-				$tArray = $this->tokenTransformers[$key];
 			}
 
-//			if (!isset($this->tokenTransformers[$key])) {
-//				$this->tokenTransformers[$key] = [];
-//				$tArray = $this->tokenTransformers[$key];
-//			}
-
 			// assure no duplicate transformers
-			$console->assert((function() use ($tArray, $t) {
-					foreach ($tArray as $value) {
-						if ($t->rank === $value->rank) {
+			$console->assert((function() use ($key, $t) {
+					foreach ($this->tokenTransformers[$key] as $value) {
+						if ($t["rank"] === $value["rank"]) {
 							return true;
 						}
 					}
 					return false;
 				})(), "Trying to add a duplicate transformer: " . $t['name']);
 
-			$tArray[] = $t;   // $tArray[]
-			usort($tArray, "self::_cmpTransformations");
-			// $this->tokenTransformers[$key] = $tArray;
+			$this->tokenTransformers[$key][] = $t;
+			usort($this->tokenTransformers[$key], "self::_cmpTransformations");
 		}
 	}
 
 	private static function removeMatchingTransform($transformers, $rank) {
 		$i = 0;
 		$n = sizeof(transformers);
-		while ($i < $n && $rank !== $transformers[$i]->rank) {
+		while ($i < $n && $rank !== $transformers[$i]["rank"]) {
 			$i++;
 		}
 		$transformers = array_splice($transformers, $i, 1);
@@ -219,8 +220,8 @@ class MockTTM {
 		$name = $isStr ? "" : (isset($token->name) ? $token->name : "");
 		$tkType = $this->tkConstructorToTkTypeMap[$type];
 		$key = $this->tokenTransformersKey($tkType, $name);
-		# print "type: $type; name: $name; tkType: $tkType; key: $key"."\n";
-		# var_dump($this->tokenTransformers);
+		print "type: $type; name: $name; tkType: $tkType; key: $key"."\n";
+		#var_dump($this->tokenTransformers);
 		$tts = isset($this->tokenTransformers[$key]) ? $this->tokenTransformers[$key] : [];
 		if (sizeof($this->defaultTransformers) > 0) {
 			$tts = array_merge($tts, $this->defaultTransformers);
@@ -230,7 +231,7 @@ class MockTTM {
 		$i = 0;
 		if ($minRank) {
 			// skip transforms <= minRank
-			while ($i < sizeof($tts) && $tts[$i]->rank <= $minRank) {
+			while ($i < sizeof($tts) && $tts[$i]["rank"] <= $minRank) {
 				$i += 1;
 			}
 		}
@@ -277,45 +278,49 @@ class MockTTM {
 					if (!isset($result)) {
 						$result = [ 'tokens' => [] ];
 					}
-					$token = json_decode($line, true);
-					switch(gettype($token)) {
+					$jsTk = json_decode($line, true);
+					switch(gettype($jsTk)) {
 						case "string":
 						   break;
 						case "array":
-							switch($token['type']) {
+							switch($jsTk['type']) {
 							case "SelfclosingTagTk":
-								$token = new SelfclosingTagTk($token['name'], $token['attribs'], $token['dataAttribs']);
+								$token = new SelfclosingTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
+								// HACK!
+								if ($jsTk['value']) {
+									$token->addAttribute("value", $jsTk['value']);
+								}
 								break;
 							case "TagTk":
-								$token = new TagTk($token['name'], $token['attribs'], $token['dataAttribs']);
+								$token = new TagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
 								break;
 							case "EndTagTk":
-								$token = new EndTagTk($token['name'], $token['attribs'], $token['dataAttribs']);
+								$token = new EndTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
 								break;
 							case "NlTk":
-								$token = new NlTk($token['dataAttribs']['tsr']);
+								$token = new NlTk($jsTk['dataAttribs']['tsr']);
 								break;
 							case "EOFTk":
 								$token = new EOFTk();
 								break;
 							case "COMMENT":
-								$token = new CommentTk($token["value"], $token['dataAttribs']);
+								$token = new CommentTk($jsTk["value"], $jsTk['dataAttribs']);
 								break;
 							}
 							break;
 					}
 					$res = [ 'token' => $token ];
-					# print $line."\n";
+					print $line."\n";
 					$ts = $this->getTransforms($token, 2.0);
 					// Push the token through the transformations till it morphs
 					$j = $ts['first'];
 					$numTransforms = sizeof($ts['transforms']);
-					# print "T: ".$token->getType().": ".$numTransforms."\n";
-					while ($j < $numTransforms && ($token === $res->token)) {
+					print "T: ".$token->getType().": ".$numTransforms."\n";
+					while ($j < $numTransforms && ($token === $res["token"])) {
 						$transformer = $ts['transforms'][$j];
-						if ($transformerName === substr($transformer->name, 0, sizeof($transformerName))) {
+						if ($transformerName === substr($transformer["name"], 0, strlen($transformerName))) {
 							// Transform the token.
-							$res = $transformer->transform($token, $this);
+							$res = $transformer["transform"]($token, $this, null);
 							if ($res['tokens']) {
 								$result['tokens'] = array_merge($result['tokens'], $res['tokens']);
 							} else if ($res['token'] && $res['token'] !== $token) {
@@ -412,7 +417,7 @@ class MockTTM {
 							while ($j < $numTransforms && ($token === $res->token)) {
 								$transformer = $ts['transforms'][$j];
 								// Transform the token.
-								$res = $transformer->transform($token, $this);
+								$res = $transformer["transform"]($token, $this);
 								if ($res->tokens) {
 									$result->tokens = array_merge($result->tokens, $res->tokens);
 								} else if ($res->token && $res->token !== $token) {

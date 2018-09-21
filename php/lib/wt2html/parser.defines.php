@@ -1,21 +1,10 @@
 <?php
-/** @module wt2html/parser_defines */
-// 'use strict';
-
-//namespace Parsoid\Lib\Wt2html\parserdefines;
-
-//require('../../core-upgrade.js');
-//Promise = require('../utils/promise.js');
-/*
-Util; // Util module var for circular dependency avoidance
-function requireUtil() {
-	if (!Util) {
-		Util = require ('../utils/Util.js') . Util; // (circular dep)
-	}
-}; // initialized later to avoid circular dependency
-*/
 
 namespace Parsoid\Lib\Wt2html;
+
+require_once (__DIR__.'/../utils/Utils.php');
+
+use Parsoid\Lib\Utils\Util;
 
 use ArrayObject;
 
@@ -30,7 +19,7 @@ class KV {
 	 * @param {any} v
 	 * @param {Array} srcOffsets The source offsets.
 	 */
-	public static function constructor($k, $v, $srcOffsets) {
+	public function __construct($k, $v, $srcOffsets) {
 		/** Key. */
 		$this->k = $k;
 		/** Value. */
@@ -54,8 +43,8 @@ class Token {
 	 * @param {string} name
 	 * @param {any} value
 	 */
-	public static function addAttribute($name, $value) {
-		$this->attribs->push(new KV($name, $value));
+	public function addAttribute($name, $value) {
+		$this->attribs[] = new KV($name, $value, null);
 	}
 
 	/**
@@ -66,7 +55,7 @@ class Token {
 	 * @param {any} value
 	 * @param {any} origValue
 	 */
-	public static function addNormalizedAttribute($name, $value, $origValue) {
+	public function addNormalizedAttribute($name, $value, $origValue) {
 		$this->addAttribute($name, $value);
 		$this->setShadowInfo($name, $value, $origValue);
 	}
@@ -77,9 +66,9 @@ class Token {
 	 * @param {string} name
 	 * @return {any}
 	 */
-	public static function getAttribute($name) {
+	public function getAttribute($name) {
 		// requireUtil();
-		return $Util->lookup($this->attribs, $name);
+		return Util::lookup($this->attribs, $name);
 	}
 
 	/**
@@ -88,13 +77,13 @@ class Token {
 	 * @param {string} name
 	 * @param {any} value
 	 */
-	public static function setAttribute($name, $value) {
+	public function setAttribute($name, $value) {
 		// requireUtil();
 		// First look for the attribute and change the last match if found.
 		for ($i = $this->attribs->length - 1; $i >= 0; $i--) {
 			$kv = $this->attribs[$i];
 			$k = $kv->k;
-			if ($k->constructor === String && $k->toLowerCase() === $name) {
+			if (gettype($k) == "string" && $k->toLowerCase() === $name) {
 				$kv->v = $value;
 				$this->attribs[$i] = $kv;
 				return;
@@ -111,7 +100,7 @@ class Token {
 	 * @param {any} value
 	 * @param {any} origValue
 	 */
-	public static function setShadowInfo($name, $value, $origValue) {
+	public function setShadowInfo($name, $value, $origValue) {
 		// Don't shadow if value is the same or the orig is null
 		if ($value !== $origValue && $origValue !== null) {
 			if (!$this->dataAttribs->a) {
@@ -138,7 +127,7 @@ class Token {
 	 * @return {boolean} return.modified Whether the attribute was changed between parsing and now.
 	 * @return {boolean} return.fromsrc Whether we needed to get the source of the attribute to round-trip it.
 	 */
-	public static function getAttributeShadowInfo($name) {
+	public function getAttributeShadowInfo($name) {
 		// requireUtil();
 		$curVal = $Util->lookup($this->attribs, $name);
 
@@ -178,7 +167,7 @@ class Token {
 	 *
 	 * @param {string} name
 	 */
-	public static function removeAttribute($name) {
+	public function removeAttribute($name) {
 		$out = [];
 		$attribs = $this->attribs;
 		for ($i = 0, $l = $attribs->length; $i < $l; $i++) {
@@ -196,7 +185,7 @@ class Token {
 	 * @param {string} name
 	 * @param {any} value The value to add to the attribute.
 	 */
-	public static function addSpaceSeparatedAttribute($name, $value) {
+	public function addSpaceSeparatedAttribute($name, $value) {
 		// requireUtil();
 		$curVal = $Util->lookupKV($this->attribs, $name);
 		// vals;
@@ -223,7 +212,7 @@ class Token {
 	 * @param {MWParserEnvironment} env
 	 * @return {string}
 	 */
-	public static function getWTSource($env) {
+	public function getWTSource($env) {
 		$tsr = $this->dataAttribs->tsr;
 		$console->assert(is_array($tsr), 'Expected token to have tsr info.');
 		return substring($env->page->src, $tsr[0], $tsr[1]);
@@ -257,7 +246,7 @@ class TagTk extends Token {
 	/**
 	 * @return {string}
 	 */
-	public static function toJSON() {
+	public function toJSON() {
 		$this->type = 'TagTk';  // added this instead:
 		return $this;           // was:  $Object->assign({ type: 'TagTk' }, $this);
 	}
@@ -265,12 +254,12 @@ class TagTk extends Token {
 	/**
 	 * @return {string}
 	 */
-	public static function defaultToString() {
+	public function defaultToString() {
 		return "<" + $this->name + ">";
 	}
 
 	/** @private */
-	public static function tagToStringFns($which) {
+	public function tagToStringFns($which) {
 		switch ($which) {
 			case "listItem":
 				// there maybe an issue where => functions use the lexically scoped $this and php behaves differently
@@ -295,7 +284,7 @@ class TagTk extends Token {
 	 *   tag name.
 	 * @return {string}
 	 */
-	public static function toString($compact) {
+	public function toString($compact) {
 		requireUtil();
 		if ($Util->isHTMLTag($this)) {
 			if ($compact) {
@@ -342,7 +331,7 @@ class EndTagTk extends Token {
 	/**
 	 * @return {string}
 	 */
-	public static function toJSON() {
+	public function toJSON() {
 		// return Object.assign({ type: 'EndTagTk' }, this);
 	    return $this->type = "EndTagTk";
 	}
@@ -350,7 +339,7 @@ class EndTagTk extends Token {
 	/**
 	 * @return {string}
 	 */
-	public static function toString(){
+	public function toString(){
 	    // requireUtil();
 	    if ($Util->isHTMLTag($this)) {
 			return "</HTML:" + $this->name + ">";
@@ -387,7 +376,7 @@ class SelfclosingTagTk extends Token {
 	/**
 	 * @return {string}
 	 */
-	public static function toJSON(){
+	public function toJSON(){
 		//return $Object->assign({ type: 'SelfclosingTagTk' }, $this);
 		return $this->type = 'SelfclosingTagTk';
 	}
@@ -401,7 +390,7 @@ class SelfclosingTagTk extends Token {
 	 * @return {boolean} return.present Whether there is any non-empty string representation of these tokens.
 	 * @return {string} return.str
 	 */
-	public static function multiTokenArgToString($key, $arg, $indent, $indentIncrement) {
+	public function multiTokenArgToString($key, $arg, $indent, $indentIncrement) {
 		// requireUtil();
 		$newIndent = $indent + $indentIncrement;
 		$present = true;
@@ -425,7 +414,7 @@ class SelfclosingTagTk extends Token {
 	 * @param {number} startAttrIndex Where to start converting attributes.
 	 * @return {string}
 	 */
-	public static function attrsToString($indent, $indentIncrement, $startAttrIndex){
+	public function attrsToString($indent, $indentIncrement, $startAttrIndex){
 		$buf = [];
 		for ($i = startAttrIndex, $n = $this->attribs->length; $i < $n; $i++) {
 			$a = $this->attribs[$i];
@@ -457,7 +446,7 @@ class SelfclosingTagTk extends Token {
 	 * @param {string} indent The string by which to indent each line.
 	 * @return {string}
 	 */
-	public static function defaultToString($compact, $indent) {
+	public function defaultToString($compact, $indent) {
 		// requireUtil();
 		if ($compact) {
 			$buf = "<" . $this->name . ">:";
@@ -476,7 +465,7 @@ class SelfclosingTagTk extends Token {
 	}
 
 	/** @private */
-	public static function tagToStringFns($which, $compact, $indent){
+	public function tagToStringFns($which, $compact, $indent){
 		switch ($which) {
 			case "extlink":
 				return function ($compact, $indent) {
@@ -538,7 +527,7 @@ class SelfclosingTagTk extends Token {
 	 * @param {string} indent The string by which to indent each line.
 	 * @return {string}
 	 */
-	public static function toString($compact, $indent){
+	public function toString($compact, $indent){
 		if ($Util->isHTMLTag($this)) {
 		return "<HTML:" . $this->name . " />";
 		} else {
@@ -573,7 +562,7 @@ class NlTk extends Token {
 	 *
 	 * @return {string} JSON string.
 	 */
-	public static function toJSON() {
+	public function toJSON() {
 		// return $Object->assign({ type: 'NlTk' }, $this);
 		return $this->type = "NlTk";
 	}
@@ -583,7 +572,7 @@ class NlTk extends Token {
 	 *
 	 * @return {string} The string `"\n"`.
 	 */
-	public static function toString() {
+	public function toString() {
 		return "\\n";
 	}
 }
@@ -611,12 +600,12 @@ class CommentTk extends Token {
 		return "CommentTk";
 	}
 
-	public static function toJSON() {
+	public function toJSON() {
 		// return $Object->assign({ type: 'COMMENT' }, $this);
 		return $this->type = "COMMENT";
 	}
 
-	public static function toString() {
+	public function toString() {
 		return "<!--" . $this->value . "-->";
 	}
 }
@@ -626,7 +615,7 @@ class EOFTk extends Token {
 	public function __construct() {
 	}
 
-	public static function toJSON() {
+	public function toJSON() {
 		// return $Object->assign({type: 'EOFTk'}, $this);
 		return $this->type = "EOFtk";
 	}
@@ -635,7 +624,7 @@ class EOFTk extends Token {
 		return "EOFTk";
 	}
 
-	public static function toString() {
+	public function toString() {
 		return "";
 	}
 }
@@ -659,7 +648,7 @@ class Params extends ArrayObject {
 		$this->namedArgsDict = null;
 	}
 
-	public static function dict() {
+	public function dict() {
 		// requireUtil();
 		if ($this->argDict === null) {
 			$res = [];
@@ -673,7 +662,7 @@ class Params extends ArrayObject {
 		return $this->argDict;
 	}
 
-	public static function named() {
+	public function named() {
 		// requireUtil();
 		if ($this->namedArgsDict === null) {
 			$n = 1;
@@ -684,7 +673,7 @@ class Params extends ArrayObject {
 				// FIXME: Also check for whitespace-only named args!
 				$k = this[$i]->k;
 				$v = this[$i]->v;
-				if ($k->constructor === String) {
+				if (gettype($k) == "string") {
 					$k = $k->trim();
 				}
 				if (!$k->length &&
@@ -692,7 +681,7 @@ class Params extends ArrayObject {
 					$this[$i]->srcOffsets[1] === $this[$i]->srcOffsets[2]) {
 					$out[$n->toString()] = $v;
 					$n++;
-				} else if ($k->constructor === String) {
+				} else if (gettype($k) == "string") {
 					$namedArgs[$k] = true;
 					$out[$k] = $v;
 				} else {
@@ -712,16 +701,16 @@ class Params extends ArrayObject {
 	 * @return {Promise}
 	 */
 /* STB not sure how to port this due to promises and async stuff
-	public static function getSlice($options, $start, $end) {
+	public function getSlice($options, $start, $end) {
 		// requireUtil();
 		$args = $this->slice($start, $end);
 		return $Promise->all($args->map($Promise->async(function *($kv){ // eslint-disable-line require-yield
 			$k = $kv->k;
 			$v = $kv->v;
-			if ($Array->isArray($v) && $v->length === 1 && $v[0]->constructor === String) {
+			if ($Array->isArray($v) && $v->length === 1 && gettype($v[0]) == "string") {
 				// remove String from Array
 				$kv = new KV($k, $v[0], $kv->srcOffsets);
-			} else if ($v->constructor !== String) {
+			} else if (gettype($v) == "string") {
 				$kv = new KV($k, $Util->tokensToString($v), $kv->srcOffsets);
 			}
 			return $kv;
