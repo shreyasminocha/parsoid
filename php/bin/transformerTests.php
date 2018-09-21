@@ -165,10 +165,16 @@ class MockTTM {
 			$this->defaultTransformers->push($t);
 		} else {
 			$key = $this->tokenTransformersKey($type, $name);
-			if (!isset($this->tokenTransformers[$key])) {
+			$tArray = $this->tokenTransformers[$key];
+			if (!isset($tArray) ) {
 				$this->tokenTransformers[$key] = [];
 				$tArray = $this->tokenTransformers[$key];
 			}
+
+//			if (!isset($this->tokenTransformers[$key])) {
+//				$this->tokenTransformers[$key] = [];
+//				$tArray = $this->tokenTransformers[$key];
+//			}
 
 			// assure no duplicate transformers
 			$console->assert((function() use ($tArray, $t) {
@@ -180,8 +186,9 @@ class MockTTM {
 					return false;
 				})(), "Trying to add a duplicate transformer: " . $t['name']);
 
-			$tArray[] = $t;
+			$tArray[] = $t;   // $tArray[]
 			usort($tArray, "self::_cmpTransformations");
+			// $this->tokenTransformers[$key] = $tArray;
 		}
 	}
 
