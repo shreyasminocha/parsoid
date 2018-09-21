@@ -171,7 +171,7 @@ class MockTTM {
 
 		if ($type === 'any') {
 			// Record the any transformation
-			$this->defaultTransformers->push($t);
+			$this->defaultTransformers[] = $t;
 		} else {
 			$key = $this->tokenTransformersKey($type, $name);
 			if (!isset($this->tokenTransformers[$key])) {
@@ -220,12 +220,12 @@ class MockTTM {
 		$name = $isStr ? "" : (isset($token->name) ? $token->name : "");
 		$tkType = $this->tkConstructorToTkTypeMap[$type];
 		$key = $this->tokenTransformersKey($tkType, $name);
-		print "type: $type; name: $name; tkType: $tkType; key: $key"."\n";
+		#print "type: $type; name: $name; tkType: $tkType; key: $key"."\n";
 		#var_dump($this->tokenTransformers);
 		$tts = isset($this->tokenTransformers[$key]) ? $this->tokenTransformers[$key] : [];
 		if (sizeof($this->defaultTransformers) > 0) {
 			$tts = array_merge($tts, $this->defaultTransformers);
-			$tts.sort($this->_cmpTransformations);
+			usort($tts, "self::_cmpTransformations");
 		}
 
 		$i = 0;
@@ -310,20 +310,20 @@ class MockTTM {
 							break;
 					}
 					$res = [ 'token' => $token ];
-					print $line."\n";
+					print "PROCESSING $line\n";
 					$ts = $this->getTransforms($token, 2.0);
 					// Push the token through the transformations till it morphs
 					$j = $ts['first'];
 					$numTransforms = sizeof($ts['transforms']);
-					print "T: ".$token->getType().": ".$numTransforms."\n";
-					while ($j < $numTransforms && ($token === $res["token"])) {
+					#print "T: ".$token->getType().": ".$numTransforms."\n";
+					while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"])) {
 						$transformer = $ts['transforms'][$j];
 						if ($transformerName === substr($transformer["name"], 0, strlen($transformerName))) {
 							// Transform the token.
 							$res = $transformer["transform"]($token, $this, null);
-							if ($res['tokens']) {
+							if (isset($res['tokens'])) {
 								$result['tokens'] = array_merge($result['tokens'], $res['tokens']);
-							} else if ($res['token'] && $res['token'] !== $token) {
+							} else if (isset($res['token']) && $res['token'] !== $token) {
 								$result['tokens'][] = $res['token'];
 							}
 						}

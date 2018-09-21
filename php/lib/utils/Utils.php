@@ -14,7 +14,7 @@ class Util {
 		}
 		for ($i = 0, $l = sizeof($kvs); $i < $l; $i++) {
 			$kv = $kvs[$i];
-			var_dump($kv);
+			#var_dump($kv);
 			if (gettype($kv->k) == "string" && trim($kv->k) === $key) {
 				// found, return it.
 				return $kv;

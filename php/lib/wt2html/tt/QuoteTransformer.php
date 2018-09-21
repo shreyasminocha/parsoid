@@ -9,8 +9,8 @@ namespace Parsoid\Lib\Wt2html\TT;
 require_once (__DIR__.'/TokenHandler.php');
 require_once (__DIR__.'/../parser.defines.php');
 
-use Parsoid\Lib\Wt2html\TT;
-use Parsoid\Lib\Wt2html;
+use Parsoid\Lib\Wt2html\TagTk;
+use Parsoid\Lib\Wt2html\EndTagTk;
 
 /**
  * @class
@@ -49,8 +49,8 @@ class QuoteTransformer extends TokenHandler {
 	}
 
 // Make a copy of the token context
-	public static function _startNewChunk() {
-		$this->chunks->push($this->currentChunk);
+	public function _startNewChunk() {
+		$this->chunks[] = $this->currentChunk;
 		$this->currentChunk = [];
 	}
 
@@ -61,37 +61,37 @@ class QuoteTransformer extends TokenHandler {
  * onNewLine.
  */
 	public function onQuote($token, $tokenManager, $prevToken) {
-		var_dump($token);
+		#var_dump($token);
 		$v = $token->getAttribute("value");
 		$qlen = strlen($v);
 		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "QUOTE |", json_encode($token));
 
 		if (!$this->isActive) {
-			$this->manager->addTransform($this->onNewLine->bind($this),
-				'QuoteTransformer:onNewLine', $this->quoteAndNewlineRank, 'newline');
+			$this->manager->addTransform([$this, 'onNewLine'],
+				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'newline', null);
 		// Treat 'th' just the same as a newline
-			$this->manager->addTransform($this->onNewLine->bind(this),
-				'QuoteTransformer:onNewLine', $this->quoteAndNewlineRank, 'tag', 'td');
+			$this->manager->addTransform([$this, 'onNewLine'],
+				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'tag', 'td');
 		// Treat 'td' just the same as a newline
-			$this->manager->addTransform($this->onNewLine->bind(this),
-				'QuoteTransformer:onNewLine', $this->quoteAndNewlineRank, 'tag', 'th');
+			$this->manager->addTransform([$this, 'onNewLine'],
+				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'tag', 'th');
 		// Treat end-of-input just the same as a newline
-			$this->manager->addTransform($this->onNewLine->bind(this),
-				'QuoteTransformer:onNewLine:end', $this->quoteAndNewlineRank, 'end');
+			$this->manager->addTransform([$this, 'onNewLine'],
+				'QuoteTransformer:onNewLine:end', self::quoteAndNewlineRank, 'end', null);
 		// Register for any token if not yet active
-			$this->manager->addTransform($this->onAny->bind($this),
-				'QuoteTransformer:onAny', $this->anyRank, 'any');
+			$this->manager->addTransform([$this, 'onNewLine'],
+				'QuoteTransformer:onAny', self::anyRank, 'any', null);
 			$this->isActive = true;
 		// Add initial context to chunks (we'll get rid of it later)
-			$this->currentChunk->push($prevToken || '');
+			$this->currentChunk[] = $prevToken ? $prevToken : '';
 		}
 
 		if ($qlen === 2 || $qlen === 3 || $qlen === 5) {
 			$this->_startNewChunk();
-			$this->currentChunk->push($token);
+			$this->currentChunk[] = $token;
 			$this->_startNewChunk();
 		} else {
-			$console->assert(false, "should be transformed by tokenizer");
+			#$console->assert(false, "should be transformed by tokenizer");
 		}
 
 		return [];
@@ -102,7 +102,7 @@ class QuoteTransformer extends TokenHandler {
 			(!$this->isActive ? " ---> " : "") . json_encode($token)
 		);
 
-		$this->currentChunk->push($token);
+		$this->currentChunk[] = $token;
 		return [];
 	}
 
@@ -127,7 +127,7 @@ class QuoteTransformer extends TokenHandler {
 		$numbold = 0;
 		$numitalics = 0;
 		for ($i = 1; $i < sizeof($this->chunks); $i += 2) {
-			$console->assert(sizeof($this->chunks[$i]) === 1); // quote token
+			#$console->assert(sizeof($this->chunks[$i]) === 1); // quote token
 			$qlen = strlen($this->chunks[$i][0]->getAttribute("value"));
 			if ($qlen === 2 || $qlen === 5) { $numitalics++; }
 			if ($qlen === 3 || $qlen === 5) { $numbold++; }
@@ -140,7 +140,7 @@ class QuoteTransformer extends TokenHandler {
 			$firstspace = -1;
 			for ($i = 1; $i < sizeof($this->chunks); $i += 2) {
 			// only look at bold tags
-				if (strlen($this->chunks[i][0]->getAttribute("value")) !== 3) { continue; }
+				if (strlen($this->chunks[$i][0]->getAttribute("value")) !== 3) { continue; }
 			// find the first previous token which is text
 			// (this is an approximation, since the wikitext algorithm looks
 			// at the raw unparsed source here)
@@ -190,7 +190,7 @@ class QuoteTransformer extends TokenHandler {
 		$this->convertQuotesToTags();
 
 	// return all collected tokens including the newline
-		$this->currentChunk->push($token);
+		$this->currentChunk[] = $token;
 		$this->_startNewChunk();
 		$this->chunks[0]->shift(); // remove 'prevToken' before first quote.
 		$res = [ $tokens => array_combine([], $this->chunks) ];
@@ -214,12 +214,14 @@ class QuoteTransformer extends TokenHandler {
  * Convert a bold token to italic to balance an uneven number of both bold and
  * italic tags. In the process, one quote needs to be converted back to text.
  */
-	public static function convertBold($i) {
+	public function convertBold($i) {
 	// this should be a bold tag.
+		/*
 		$console->assert($i > 0 && sizeof($this->chunks[$i]) === 1 &&
 		strlen($this->chunks[$i][0]->getAttribute("value")) === 3);
+		*/
 	// we're going to convert it to a single plain text ' plus an italic tag
-		$this->chunks[$i - 1]->push("'");
+		$this->chunks[$i - 1][] = "'";
 		$oldbold = $this->chunks[$i][0];
 		$tsr = $oldbold->dataAttribs ? $oldbold->dataAttribs["tsr"] : null;
 		if ($tsr) {
@@ -232,12 +234,12 @@ class QuoteTransformer extends TokenHandler {
 
 // Convert quote tokens to tags, using the same state machine as the
 // PHP parser uses.
-	public static function convertQuotesToTags() {
+	public function convertQuotesToTags() {
 		$lastboth = -1;
 		$state = '';
 
 		for ($i = 1; $i < sizeof($this->chunks); $i += 2) {
-			$console->assert(sizeof($this->chunks[$i]) === 1);
+			#$console->assert(sizeof($this->chunks[$i]) === 1);
 			$qlen = strlen($this->chunks[$i][0]->getAttribute("value"));
 			if ($qlen === 2) {
 				if ($state === 'i') {
@@ -303,7 +305,7 @@ class QuoteTransformer extends TokenHandler {
 					$this->quoteToTag($i, [new EndTagTk('b'), new EndTagTk('i')]);
 					$state = '';
 				} else { // state == ''
-					$lastboth = i;
+					$lastboth = $i;
 					$state = 'both';
 				}
 			}
@@ -315,29 +317,29 @@ class QuoteTransformer extends TokenHandler {
 			$state = 'bi';
 		}
 		if ($state === 'b' || $state === 'ib') {
-			$this->currentChunk->push(new EndTagTk('b'));
+			$this->currentChunk[] = new EndTagTk('b');
 			$this->last->b->dataAttribs["autoInsertedEnd"] = true;
 		}
 		if ($state === 'i' || $state === 'bi' || $state === 'ib') {
-			$this->currentChunk->push(new EndTagTk('i'));
+			$this->currentChunk[] = new EndTagTk('i');
 			$this->last->i->dataAttribs["autoInsertedEnd"] = true;
 		}
 		if ($state === 'bi') {
-			$this->currentChunk->push(new EndTagTk('b'));
+			$this->currentChunk[] = new EndTagTk('b');
 			$this->last->b->dataAttribs["autoInsertedEnd"] = true;
 		}
 	}
 
 /** Convert italics/bolds into tags. */
-	public static function quoteToTag($chunk, $tags, $ignoreBogusTwo) {
-		$console->assert(sizeof($this->chunks[$chunk]) === 1);
+	public function quoteToTag($chunk, $tags, $ignoreBogusTwo = false) {
+		#$console->assert(sizeof($this->chunks[$chunk]) === 1);
 		$result = [];
 		$oldtag = $this->chunks[$chunk][0];
 		// make tsr
 		$tsr = $oldtag->dataAttribs ? $oldtag->dataAttribs["tsr"] : null;
 		$startpos = $tsr ? $tsr[0] : null;
 		$endpos = $tsr ? $tsr[1] : null;
-		for ($i = 0; $i < sizeof(tags); $i++) {
+		for ($i = 0; $i < sizeof($tags); $i++) {
 			if ($tsr) {
 				if ($i === 0 && $ignoreBogusTwo) {
 					$this->last[$tags[$i]->name]->dataAttribs["autoInsertedEnd"] = true;
@@ -349,12 +351,12 @@ class QuoteTransformer extends TokenHandler {
 				} else if ($tags[$i]->name === 'i') {
 					$tags[$i]->dataAttribs["tsr"] = [ $startpos, $startpos + 2 ];
 					$startpos = $tags[$i]->dataAttribs["tsr"][1];
-				} else { $console->assert(false); }
+				} else { /*$console->assert(false);*/ }
 			}
-			$this->last[$tags[$i]->name] = ($tags[$i]->constructor === $EndTagTk) ? null : $tags[$i];
-			$result->push($tags[$i]);
+			$this->last[$tags[$i]->name] = ($tags[$i]->getType() === "EndTagTk") ? null : $tags[$i];
+			$result[] = $tags[$i];
 		}
-		if ($tsr) { $console->assert($startpos === $endpos, $startpos, $endpos); }
+		if ($tsr) { /*$console->assert($startpos === $endpos, $startpos, $endpos);*/ }
 		$this->chunks[$chunk] = $result;
 	}
 }

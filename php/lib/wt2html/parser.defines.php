@@ -230,7 +230,7 @@ class TagTk extends Token {
 	 * @param {KV[]} attribs
 	 * @param {Object} dataAttribs Data-parsoid object.
 	 */
-	public function __construct($name, $attribs, $dataAttribs) {
+	public function __construct($name, $attribs = [], $dataAttribs = []) {
 		/** @type {string} */
 		$this->name = $name;
 		/** @type {KV[]} */
@@ -310,12 +310,13 @@ class TagTk extends Token {
  * @extends ~Token
  */
 class EndTagTk extends Token {
+
 	/*
 	* @param {string} name
 	* @param {KV[]} attribs
 	* @param {Object} dataAttribs
 	*/
-	public function __construct($name, $attribs, $dataAttribs) {
+	public function __construct($name, $attribs = [], $dataAttribs = []) {
 			/** @type {string} */
 		$this->name = $name;
 			/** @type {KV[]} */
@@ -360,7 +361,7 @@ class SelfclosingTagTk extends Token {
 	 * @param {KV[]} attribs
 	 * @param {Object} dataAttribs
 	 */
-	public function __construct($name, $attribs, $dataAttribs) {
+	public function __construct($name, $attribs = [], $dataAttribs = []) {
 			/** @type {string} */
 		$this->name = $name;
 			/** @type {KV[]} */
