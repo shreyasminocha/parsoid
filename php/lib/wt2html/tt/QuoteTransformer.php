@@ -43,7 +43,7 @@ class QuoteTransformer extends TokenHandler {
 		$this->currentChunk = array();
 	// last italic / last bold open tag seen.  Used to add autoInserted flags
 	// where necessary.
-		$this->last = (object) null;
+		$this->last = [];
 
 		$this->isActive = false;
 	}
@@ -68,7 +68,7 @@ class QuoteTransformer extends TokenHandler {
 
 		if (!$this->isActive) {
 			$this->manager->addTransform([$this, 'onNewLine'],
-				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'newline', null);
+				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'newline');
 		// Treat 'th' just the same as a newline
 			$this->manager->addTransform([$this, 'onNewLine'],
 				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'tag', 'td');
@@ -77,7 +77,7 @@ class QuoteTransformer extends TokenHandler {
 				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'tag', 'th');
 		// Treat end-of-input just the same as a newline
 			$this->manager->addTransform([$this, 'onNewLine'],
-				'QuoteTransformer:onNewLine:end', self::quoteAndNewlineRank, 'end', null);
+				'QuoteTransformer:onNewLine:end', self::quoteAndNewlineRank, 'end');
 		// Register for any token if not yet active
 			$this->manager->addTransform([$this, 'onNewLine'],
 				'QuoteTransformer:onAny', self::anyRank, 'any', null);
@@ -118,7 +118,7 @@ class QuoteTransformer extends TokenHandler {
 
 		if (!$this->isActive) {
 		// Nothing to do, quick abort.
-			return [ token => $token ];
+			return [ "token" => $token ];
 		}
 	// token.rank = this.quoteAndNewlineRank;
 
@@ -192,20 +192,20 @@ class QuoteTransformer extends TokenHandler {
 	// return all collected tokens including the newline
 		$this->currentChunk[] = $token;
 		$this->_startNewChunk();
-		$this->chunks[0]->shift(); // remove 'prevToken' before first quote.
-		$res = [ $tokens => array_combine([], $this->chunks) ];
+		array_shift($this->chunks[0]); // remove 'prevToken' before first quote.
+		$res = [ "tokens" => array_merge([], $this->chunks) ];
 
-		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res->$tokens));
+		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res["tokens"]));
 
 	// prepare for next line
 		$this->reset();
 
 	// remove registrations
-		$this->manager->removeTransform($this->quoteAndNewlineRank, 'end');
-		$this->manager->removeTransform($this->quoteAndNewlineRank, 'tag', 'td');
-		$this->manager->removeTransform($this->quoteAndNewlineRank, 'tag', 'th');
-		$this->manager->removeTransform($this->quoteAndNewlineRank, 'newline');
-		$this->manager->removeTransform($this->anyRank, 'any');
+		$this->manager->removeTransform([$this, "quoteAndNewlineRank"], 'end');
+		$this->manager->removeTransform([$this, "quoteAndNewlineRank"], 'tag', 'td');
+		$this->manager->removeTransform([$this, "quoteAndNewlineRank"], 'tag', 'th');
+		$this->manager->removeTransform([$this, "quoteAndNewlineRank"], 'newline');
+		$this->manager->removeTransform([$this, "anyRank"], 'any');
 
 		return $res;
 	}
@@ -227,7 +227,7 @@ class QuoteTransformer extends TokenHandler {
 		if ($tsr) {
 			$tsr = [ $tsr[0] + 1, $tsr[1] ];
 			}
-		$newbold = new SelfclosingTagTk('mw-quote', [], [ tsr => $tsr ]);
+		$newbold = new SelfclosingTagTk('mw-quote', [], [ "tsr" => $tsr ]);
 		$newbold->setAttribute("value", "''"); // italic!
 		$this->chunks[$i] = [ $newbold ];
 	}
@@ -318,15 +318,15 @@ class QuoteTransformer extends TokenHandler {
 		}
 		if ($state === 'b' || $state === 'ib') {
 			$this->currentChunk[] = new EndTagTk('b');
-			$this->last->b->dataAttribs["autoInsertedEnd"] = true;
+			$this->last["b"]->dataAttribs["autoInsertedEnd"] = true;
 		}
 		if ($state === 'i' || $state === 'bi' || $state === 'ib') {
 			$this->currentChunk[] = new EndTagTk('i');
-			$this->last->i->dataAttribs["autoInsertedEnd"] = true;
+			$this->last["i"]->dataAttribs["autoInsertedEnd"] = true;
 		}
 		if ($state === 'bi') {
 			$this->currentChunk[] = new EndTagTk('b');
-			$this->last->b->dataAttribs["autoInsertedEnd"] = true;
+			$this->last["b"]->dataAttribs["autoInsertedEnd"] = true;
 		}
 	}
 

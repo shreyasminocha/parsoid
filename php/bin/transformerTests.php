@@ -160,7 +160,7 @@ class MockTTM {
 		return ($value < 0) ? -1 : 1;
 	}
 
-	public function addTransform($transformation, $debugName, $rank, $type, $name) {
+	public function addTransform($transformation, $debugName, $rank, $type, $name = null) {
 		global $console;
 
 		$t = makeMap([
@@ -193,23 +193,23 @@ class MockTTM {
 		}
 	}
 
-	private static function removeMatchingTransform($transformers, $rank) {
+	private function removeMatchingTransform($transformers, $rank) {
 		$i = 0;
-		$n = sizeof(transformers);
+		$n = sizeof($transformers);
 		while ($i < $n && $rank !== $transformers[$i]["rank"]) {
 			$i++;
 		}
 		$transformers = array_splice($transformers, $i, 1);
 	}
 
-	public static function removeTransform($rank, $type, $name) {
+	public function removeTransform($rank, $type, $name = null) {
 		if ($type === 'any') {
 			// Remove from default transformers
-			removeMatchingTransform($this->defaultTransformers, $rank);
+			$this->removeMatchingTransform($this->defaultTransformers, $rank);
 		} else {
-			$key = tokenTransformersKey($type, $name);
+			$key = $this->tokenTransformersKey($type, $name);
 			if (isset($this->tokenTransformers[$key])) {
-				removeMatchingTransform($this->tokenTransformers[$key], $rank);
+				$this->removeMatchingTransform($this->tokenTransformers[$key], $rank);
 			}
 		}
 	}
@@ -263,6 +263,8 @@ class MockTTM {
 				case '[':	// desired result json string for test result verification
 					if (isset($result) && sizeof($result['tokens']) !== 0) {
 						$stringResult = json_encode($result['tokens']);
+						print "SR  : $stringResult\n";
+						print "LINE: $line\n";
 						if ($stringResult === $line) {
 							$console->log($testName . ' ==> passed\n');
 						} else {
