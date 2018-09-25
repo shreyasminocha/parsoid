@@ -19,7 +19,7 @@ class KV {
 	 * @param {any} v
 	 * @param {Array} srcOffsets The source offsets.
 	 */
-	public function __construct($k, $v, $srcOffsets) {
+	public function __construct($k, $v, $srcOffsets = null) {
 		/** Key. */
 		$this->k = $k;
 		/** Value. */
