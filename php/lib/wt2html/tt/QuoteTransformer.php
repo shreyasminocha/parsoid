@@ -91,7 +91,7 @@ class QuoteTransformer extends TokenHandler {
 			$this->currentChunk[] = $token;
 			$this->_startNewChunk();
 		} else {
-			#$console->assert(false, "should be transformed by tokenizer");
+			assert(false, "should be transformed by tokenizer");
 		}
 
 		return [];
@@ -127,7 +127,7 @@ class QuoteTransformer extends TokenHandler {
 		$numbold = 0;
 		$numitalics = 0;
 		for ($i = 1; $i < sizeof($this->chunks); $i += 2) {
-			#$console->assert(sizeof($this->chunks[$i]) === 1); // quote token
+			assert(sizeof($this->chunks[$i]) === 1); // quote token
 			$qlen = strlen($this->chunks[$i][0]->getAttribute("value"));
 			if ($qlen === 2 || $qlen === 5) { $numitalics++; }
 			if ($qlen === 3 || $qlen === 5) { $numbold++; }
@@ -216,10 +216,7 @@ class QuoteTransformer extends TokenHandler {
  */
 	public function convertBold($i) {
 	// this should be a bold tag.
-		/*
-		$console->assert($i > 0 && sizeof($this->chunks[$i]) === 1 &&
-		strlen($this->chunks[$i][0]->getAttribute("value")) === 3);
-		*/
+		assert($i > 0 && sizeof($this->chunks[$i]) === 1 && strlen($this->chunks[$i][0]->getAttribute("value")) === 3);
 	// we're going to convert it to a single plain text ' plus an italic tag
 		$this->chunks[$i - 1][] = "'";
 		$oldbold = $this->chunks[$i][0];
@@ -239,7 +236,7 @@ class QuoteTransformer extends TokenHandler {
 		$state = '';
 
 		for ($i = 1; $i < sizeof($this->chunks); $i += 2) {
-			#$console->assert(sizeof($this->chunks[$i]) === 1);
+			assert(sizeof($this->chunks[$i]) === 1);
 			$qlen = strlen($this->chunks[$i][0]->getAttribute("value"));
 			if ($qlen === 2) {
 				if ($state === 'i') {
@@ -332,7 +329,7 @@ class QuoteTransformer extends TokenHandler {
 
 /** Convert italics/bolds into tags. */
 	public function quoteToTag($chunk, $tags, $ignoreBogusTwo = false) {
-		#$console->assert(sizeof($this->chunks[$chunk]) === 1);
+		assert(sizeof($this->chunks[$chunk]) === 1);
 		$result = [];
 		$oldtag = $this->chunks[$chunk][0];
 		// make tsr
@@ -351,12 +348,12 @@ class QuoteTransformer extends TokenHandler {
 				} else if ($tags[$i]->name === 'i') {
 					$tags[$i]->dataAttribs["tsr"] = [ $startpos, $startpos + 2 ];
 					$startpos = $tags[$i]->dataAttribs["tsr"][1];
-				} else { /*$console->assert(false);*/ }
+				} else { assert(false); }
 			}
 			$this->last[$tags[$i]->name] = ($tags[$i]->getType() === "EndTagTk") ? null : $tags[$i];
 			$result[] = $tags[$i];
 		}
-		if ($tsr) { /*$console->assert($startpos === $endpos, $startpos, $endpos);*/ }
+		if ($tsr) { assert($startpos === $endpos, "Start: $startpos, end: $endpos"); }
 		$this->chunks[$chunk] = $result;
 	}
 }
