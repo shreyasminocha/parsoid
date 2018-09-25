@@ -250,58 +250,6 @@ class TagTk extends Token {
 		$this->type = 'TagTk';  // added this instead:
 		return $this;           // was:  $Object->assign({ type: 'TagTk' }, $this);
 	}
-
-	/**
-	 * @return {string}
-	 */
-	public function defaultToString() {
-		return "<" + $this->name + ">";
-	}
-
-	/** @private */
-	public function tagToStringFns($which) {
-		switch ($which) {
-			case "listItem":
-				// there maybe an issue where => functions use the lexically scoped $this and php behaves differently
-				// return () => "<li:" + $this->bullets->join('') + ">";
-				return function () {"<li:" . (join('', $this->bullets)) . ">";};
-			case "mw-quote":
-				// return () => "<mw-quote:" + $this->value + ">";
-				return function () {"<mw-quote:" + $this->value + ">";};
-			case "urllink":
-				// return () => "<urllink:" + $this->attribs[0]->v + ">";
-				return function () {"<urllink:" . $this->attribs[0]->v . ">";};
-			case "behavior-switch":
-				// return () => "<behavior-switch:" + $this->attribs[0]->v + ">";
-				return function () {"<behavior-switch:" . $this->attribs[0]->v . ">";};
-		}
-		// return () => $this->defaultToString();
-		return function () {$this->defaultToString();};
-	}
-
-	/**
-	 * @param {boolean} compact Whether to return the full HTML, or just the
-	 *   tag name.
-	 * @return {string}
-	 */
-	public function toString($compact) {
-		requireUtil();
-		if ($Util->isHTMLTag($this)) {
-			if ($compact) {
-				return "<HTML:" . $this->name . ">";
-			} else {
-				$buf = '';
-				for ($i = 0, $n = $this->attribs->length; $i < $n; $i++) {
-					$a = $this->attribs[$i];
-					// $buf += ($Util->toStringTokens($a->k)->join('') . "=" . $Util->toStringTokens($a->v)->join(''));
-					$buf .= join('', ($Util->toStringTokens($a->k))) . "=" . join('', $Util->toStringTokens($a->v));
-                }
-				return "<HTML:" . $this->name . " " . $buf . ">";
-            }
-		} else {
-			return $this->tagToStringFns($this->name)();
-		}
-    }
 }
 
 /**
@@ -337,17 +285,6 @@ class EndTagTk extends Token {
 	    return $this->type = "EndTagTk";
 	}
 
-	/**
-	 * @return {string}
-	 */
-	public function toString(){
-	    // requireUtil();
-	    if ($Util->isHTMLTag($this)) {
-			return "</HTML:" + $this->name + ">";
-		} else {
-			return "</" + $this->name + ">";
-		}
-    }
 }
 
 /**
@@ -381,161 +318,6 @@ class SelfclosingTagTk extends Token {
 		//return $Object->assign({ type: 'SelfclosingTagTk' }, $this);
 		return $this->type = 'SelfclosingTagTk';
 	}
-
-	/**
-	 * @param {string} key
-	 * @param {Object} arg
-	 * @param {string} indent The string by which we should indent each new line.
-	 * @param {string} indentIncrement The string we should add to each level of indentation.
-	 * @return {Object}
-	 * @return {boolean} return.present Whether there is any non-empty string representation of these tokens.
-	 * @return {string} return.str
-	 */
-	public function multiTokenArgToString($key, $arg, $indent, $indentIncrement) {
-		// requireUtil();
-		$newIndent = $indent + $indentIncrement;
-		$present = true;
-		$toks = $Util->toStringTokens($arg, $newIndent);
-		$str = join(("\n" . $newIndent), $toks);
-
-		if ($toks->length > 1 || $str[0] === '<') {
-			$str = join('', [$key, ":{\n", $newIndent, $str, "\n", $indent, "}"]);
-		} else {
-			$present = ($str !== '');
-		}
-
-		return ["present"=>$present, "str"=>$str];
-	}
-
-	/**
-	 * Get a string representation of the tag's attributes.
-	 *
-	 * @param {string} indent The string by which to indent every line.
-	 * @param {string} indentIncrement The string to add to every successive level of indentation.
-	 * @param {number} startAttrIndex Where to start converting attributes.
-	 * @return {string}
-	 */
-	public function attrsToString($indent, $indentIncrement, $startAttrIndex){
-		$buf = [];
-		for ($i = startAttrIndex, $n = $this->attribs->length; $i < $n; $i++) {
-			$a = $this->attribs[$i];
-			$kVal = $this->multiTokenArgToString("k", $a->k, $indent, $indentIncrement);
-			$vVal = $this->multiTokenArgToString("v", $a->v, $indent, $indentIncrement);
-
-			if ($kVal->present && $vVal->present) {
-				// $buf->push([$kVal->str, "=", $vVal->str]->join(''));
-				array_push($buf, join('', [$kVal->str, "=", $vVal->str]));
-			} else {
-				if ($kVal->present) {
-					// $buf->push($kVal->str);
-					array_push($buf, $kVal->str);
-				}
-				if ($vVal->present) {
-					// $buf->push($vVal->str);
-					array_push($buf, $vVal->str);
-				}
-			}
-		}
-
-	// return $buf->join("\n" + $indent + "|");
-	return join(("\n" . $indent . "|"),  $buf);
-	}
-
-
-	/**
-	 * @param {boolean} compact Whether to return the full HTML, or just the tag name.
-	 * @param {string} indent The string by which to indent each line.
-	 * @return {string}
-	 */
-	public function defaultToString($compact, $indent) {
-		// requireUtil();
-		if ($compact) {
-			$buf = "<" . $this->name . ">:";
-			$attr0 = $this->attribs[0];
-			return $attr0 ? $buf . $Util->toStringTokens($attr0->k, "\n") : $buf;
-		} else {
-			if (!$indent) {
-				$indent = "";
-			}
-			$origIndent = $indent;
-			$indentIncrement = "  ";
-			$indent .= $indentIncrement;
-			// return ["<", $this->name, ">(\n", $indent, $this->attrsToString($indent, $indentIncrement, 0), "\n", $origIndent, ")"]->join('');
-			return join('', ["<", $this->name, ">(\n", $indent, $this->attrsToString($indent, $indentIncrement, 0), "\n", $origIndent, ")"]);
-		}
-	}
-
-	/** @private */
-	public function tagToStringFns($which, $compact, $indent){
-		switch ($which) {
-			case "extlink":
-				return function ($compact, $indent) {
-					// requireUtil();
-					$indentIncrement = "  ";
-					$href = $Util->toStringTokens($Util->lookup($this->attribs, 'href'), $indent . $indentIncrement);
-					if ($compact) {
-						return join('', ["<extlink:", $href, ">"]);
-					} else {
-						if (!$indent) {
-							$indent = "";
-						}
-						$origIndent = $indent;
-						$indent += $indentIncrement;
-						$content = $Util->lookup($this->attribs, 'mw:content');
-						$content = $this->multiTokenArgToString("v", $content, $indent, $indentIncrement)->str;
-						return join('',[
-							"<extlink>(\n", $indent,
-							"href=", $href, "\n", $indent,
-							"content=", $content, "\n", $origIndent,
-							")"
-						]);
-					}
-				};
-
-			case "wikilink":
-				return function () {
-					// requireUtil();
-					if (!$indent) {
-						$indent = "";
-					}
-					$indentIncrement = "  ";
-					$href = $Util->toStringTokens($Util->lookup($this->attribs, 'href'), $indent . $indentIncrement);
-				    if ($compact) {
-					    return join('', ["<wikilink:", $href, ">"]);
-				    } else {
-					    if (!$indent) {
-						    $indent = "";
-					    }
-					    $origIndent = $indent;
-					    $indent += $indentIncrement;
-						$tail = $Util->lookup($this->attribs, 'tail');
-						$content = $this->attrsToString($indent, $indentIncrement, 2);
-					    return join('', [
-						    "<wikilink>(\n", $indent,
-						    "href=", $href, "\n", $indent,
-						    "tail=", $tail, "\n", $indent,
-						    "content=", $content, "\n", $origIndent,
-						    ")",
-					    ]);
-			        }
-		        };
-		}
-		return function () {$this->defaultToString($compact, $indent);};
-	}
-
-	/**
-	 * @param {boolean} compact Whether to return the full HTML, or just the tag name.
-	 * @param {string} indent The string by which to indent each line.
-	 * @return {string}
-	 */
-	public function toString($compact, $indent){
-		if ($Util->isHTMLTag($this)) {
-		return "<HTML:" . $this->name . " />";
-		} else {
-			$f = $this->tagToStringFns($this->name, $compact, $indent);
-			return $f();
-		}
-	}
 }
 
 /**
@@ -567,15 +349,6 @@ class NlTk extends Token {
 		// return $Object->assign({ type: 'NlTk' }, $this);
 		return $this->type = "NlTk";
 	}
-
-	/**
-	 * Convert the token to a simple string.
-	 *
-	 * @return {string} The string `"\n"`.
-	 */
-	public function toString() {
-		return "\\n";
-	}
 }
 
 /**
@@ -605,10 +378,6 @@ class CommentTk extends Token {
 		// return $Object->assign({ type: 'COMMENT' }, $this);
 		return $this->type = "COMMENT";
 	}
-
-	public function toString() {
-		return "<!--" . $this->value . "-->";
-	}
 }
 
 	/* -------------------- EOFTk -------------------- */
@@ -623,10 +392,6 @@ class EOFTk extends Token {
 
 	public function getType() {
 		return "EOFTk";
-	}
-
-	public function toString() {
-		return "";
 	}
 }
 
@@ -718,20 +483,5 @@ class Params extends ArrayObject {
 		})));
 	} */
 }
-/*
-if (typeof module === "object") {
-	module->exports = {
-		TagTk: $TagTk,
-		EndTagTk: $EndTagTk,
-		SelfclosingTagTk: $SelfclosingTagTk,
-		NlTk: $NlTk,
-		CommentTk: $CommentTk,
-		EOFTk: $EOFTk,
-		KV: $KV,
-		Token: $Token,
-		Params: $Params
-	};
-}
-*/
 
 ?>

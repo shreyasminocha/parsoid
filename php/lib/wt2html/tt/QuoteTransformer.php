@@ -360,11 +360,6 @@ class QuoteTransformer extends TokenHandler {
 		$this->chunks[$chunk] = $result;
 	}
 }
-/*
-if (typeof module === "object") {
-	module.exports.QuoteTransformer = QuoteTransformer;
-}
-*/
 
 ?>
 
