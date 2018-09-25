@@ -248,7 +248,7 @@ class QuoteTransformer extends TokenHandler {
 				} else if ($state === 'bi') {
 					$this->quoteToTag($i, [new EndTagTk('i')]);
 					$state = 'b';
-				} else if (state === 'ib') {
+				} else if ($state === 'ib') {
 					// annoying!
 					$this->quoteToTag($i, [
 						new EndTagTk('b'),
@@ -262,30 +262,30 @@ class QuoteTransformer extends TokenHandler {
 					$state = 'b';
 				} else { // state can be 'b' or ''
 					$this->quoteToTag($i, [new TagTk('i')]);
-					$state += 'i';
+					$state .= 'i';
 				}
 			} else if ($qlen === 3) {
 				if ($state === 'b') {
-					$this->quoteToTag(i, [new EndTagTk('b')]);
+					$this->quoteToTag($i, [new EndTagTk('b')]);
 					$state = '';
 				} else if ($state === 'ib') {
-					$this->quoteToTag(i, [new EndTagTk('b')]);
+					$this->quoteToTag($i, [new EndTagTk('b')]);
 					$state = 'i';
 				} else if ($state === 'bi') {
 					// annoying!
-					$this->quoteToTag(i, [
+					$this->quoteToTag($i, [
 						new EndTagTk('i'),
 						new EndTagTk('b'),
 						new TagTk('i'),
 					], "bogus two");
 					$state = 'i';
 				} else if ($state === 'both') {
-					$this->quoteToTag(lastboth, [new TagTk('i'), new TagTk('b')]);
+					$this->quoteToTag($lastboth, [new TagTk('i'), new TagTk('b')]);
 					$this->quoteToTag($i, [new EndTagTk('b')]);
 					$state = 'i';
 				} else { // state can be 'i' or ''
 					$this->quoteToTag($i, [new TagTk('b')]);
-					$state += 'b';
+					$state .= 'b';
 				}
 			} else if ($qlen === 5) {
 				if ($state === 'b') {

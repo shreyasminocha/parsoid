@@ -241,6 +241,8 @@ class MockTTM {
 // Use the TokenTransformManager.js guts (extracted essential functionality)
 // to dispatch each token to the registered token transform function
 	public function ProcessTestFile($fileName) {
+		global $console;
+
 		$testFile = file_get_contents($fileName);
 		$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
 		$testLines = explode("\n", $testFile);
@@ -391,7 +393,7 @@ class MockTTM {
 					$line = substr($testLines[($pipeLines[$index])[$element]], 36);
 					switch ($line{0}) {
 						case '[':	// desired result json string for test result verification
-							$stringResult = json_decode($result->tokens);
+							$stringResult = json_encode($result['tokens']);
 							if ($stringResult === $line) {
 								$console->log('line ' . (($pipeLines[$index])[$element] + 1) . ' ==> passed\n');
 							} else {
@@ -403,7 +405,7 @@ class MockTTM {
 							break;
 						case '{':
 						default:
-							if (!isset($result)) {
+/*							if (!isset($result)) {
 								$result = [ 'tokens' => [] ];
 							}
 							$token = json_encode($line);
@@ -427,6 +429,60 @@ class MockTTM {
 								}
 								$j++;
 							}
+*/
+						if (!isset($result)) {
+							$result = [ 'tokens' => [] ];
+						}
+						$jsTk = json_decode($line, true);
+						switch(gettype($jsTk)) {
+							case "string":
+								break;
+							case "array":
+								switch($jsTk['type']) {
+									case "SelfclosingTagTk":
+										$token = new SelfclosingTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
+										// HACK!
+										if ($jsTk['value']) {
+											$token->addAttribute("value", $jsTk['value']);
+										}
+										break;
+									case "TagTk":
+										$token = new TagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
+										break;
+									case "EndTagTk":
+										$token = new EndTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
+										break;
+									case "NlTk":
+										$token = new NlTk($jsTk['dataAttribs']['tsr']);
+										break;
+									case "EOFTk":
+										$token = new EOFTk();
+										break;
+									case "COMMENT":
+										$token = new CommentTk($jsTk["value"], $jsTk['dataAttribs']);
+										break;
+								}
+								break;
+						}
+						$res = [ 'token' => $token ];
+						print "PROCESSING $line\n";
+						$ts = $this->getTransforms($token, 2.0);
+						// Push the token through the transformations till it morphs
+						$j = $ts['first'];
+						$numTransforms = sizeof($ts['transforms']);
+						#print "T: ".$token->getType().": ".$numTransforms."\n";
+						while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"])) {
+							$transformer = $ts['transforms'][$j];
+							// Transform the token.
+							$res = $transformer["transform"]($token, $this, null);
+							if (isset($res['tokens'])) {
+								$result['tokens'] = array_merge($result['tokens'], $res['tokens']);
+							} else if (isset($res['token']) && $res['token'] !== $token) {
+								$result['tokens'][] = $res['token'];
+							}
+							$j++;
+						}
+
 							break;
 					}
 				}
