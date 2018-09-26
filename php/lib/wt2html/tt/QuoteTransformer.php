@@ -11,6 +11,7 @@ require_once (__DIR__.'/../parser.defines.php');
 
 use Parsoid\Lib\Wt2html\TagTk;
 use Parsoid\Lib\Wt2html\EndTagTk;
+use Parsoid\Lib\Wt2html\SelfclosingTagTk;
 
 function array_flatten($array) {
    $ret = [];
@@ -221,11 +222,11 @@ class QuoteTransformer extends TokenHandler {
 		$this->reset();
 
 	// remove registrations
-		$this->manager->removeTransform([$this, "quoteAndNewlineRank"], 'end');
-		$this->manager->removeTransform([$this, "quoteAndNewlineRank"], 'tag', 'td');
-		$this->manager->removeTransform([$this, "quoteAndNewlineRank"], 'tag', 'th');
-		$this->manager->removeTransform([$this, "quoteAndNewlineRank"], 'newline');
-		$this->manager->removeTransform([$this, "anyRank"], 'any');
+		$this->manager->removeTransform(self::quoteAndNewlineRank, 'end');
+		$this->manager->removeTransform(self::quoteAndNewlineRank, 'tag', 'td');
+		$this->manager->removeTransform(self::quoteAndNewlineRank, 'tag', 'th');
+		$this->manager->removeTransform(self::quoteAndNewlineRank, 'newline');
+		$this->manager->removeTransform(self::anyRank, 'any');
 
 		return $res;
 	}

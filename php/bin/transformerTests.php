@@ -200,7 +200,7 @@ class MockTTM {
 		while ($i < $n && $rank !== $transformers[$i]["rank"]) {
 			$i++;
 		}
-		$transformers = array_splice($transformers, $i, 1);
+		array_splice($transformers, $i, 1);
 	}
 
 	public function removeTransform($rank, $type, $name = null) {
