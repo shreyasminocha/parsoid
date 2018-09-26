@@ -17,7 +17,7 @@ Purpose:
  files from existing wiki pages or any wikitext. The Parsoid generated tests
  contain the specific handler name chosen for generation and the pipeline
  that was associated with the transformation execution. The pipeline ID
- is used by transfoermTest.js to properly order the replaying of the
+ is used by transformTest.js to properly order the replaying of the
  transformers input and output sequencing for validation.
 
  Manually written tests are supported and use a slightly different format
@@ -124,6 +124,7 @@ class MockTTM {
 	}
 
 	public function log() {
+		$arguments = func_get_args();
 		$output = $arguments[0];
 		for ($index = 1; $index < sizeof($arguments); $index++) {
             if (is_callable($arguments[$index])) {
@@ -132,7 +133,7 @@ class MockTTM {
 				$output = $output . ' ' . $arguments[$index];
 			}
 		}
-		$console->log($output);
+		$this->console->log($output . "\n");
 	}
 
     public function init()
@@ -315,7 +316,7 @@ class MockTTM {
 							break;
 					}
 					$res = [ 'token' => $token ];
-					print "PROCESSING $line\n";
+					# print "PROCESSING $line\n";
 					$ts = $this->getTransforms($token, 2.0);
 					// Push the token through the transformations till it morphs
 					$j = $ts['first'];
@@ -467,7 +468,7 @@ class MockTTM {
 								break;
 						}
 						$res = [ 'token' => $token ];
-						print "PROCESSING $line\n";
+						# print "PROCESSING $line\n";
 						$ts = $this->getTransforms($token, 2.0);
 						// Push the token through the transformations till it morphs
 						$j = $ts['first'];
@@ -567,13 +568,12 @@ function runTests($argc, $argv) {
 	}
 
 	$mockEnv = [];
-	if (isset($opts->log)) {
-		$mockEnv = [ 'log' => $MockTTM->log ];
-	} else {
-		$mockEnv = [ 'log' => function () {} ];	// this disables detailed logging
-	}
-
 	$manager = new MockTTM($mockEnv, function () {});
+	if (isset($opts->log)) {
+		$manager->env = [ 'log' => [ $manager, 'log' ] ];
+	} else {
+		$manager->env = [ 'log' => function () {} ];	// this disables detailed logging
+	}
 
 	$startTime = microtime(true);
 

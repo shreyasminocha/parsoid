@@ -81,20 +81,20 @@ class QuoteTransformer extends TokenHandler {
 		if (!$this->isActive) {
 			$this->manager->addTransform([$this, 'onNewLine'],
 				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'newline');
-		// Treat 'th' just the same as a newline
+			// Treat 'th' just the same as a newline
 			$this->manager->addTransform([$this, 'onNewLine'],
 				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'tag', 'td');
-		// Treat 'td' just the same as a newline
+			// Treat 'td' just the same as a newline
 			$this->manager->addTransform([$this, 'onNewLine'],
 				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'tag', 'th');
-		// Treat end-of-input just the same as a newline
+			// Treat end-of-input just the same as a newline
 			$this->manager->addTransform([$this, 'onNewLine'],
 				'QuoteTransformer:onNewLine:end', self::quoteAndNewlineRank, 'end');
-		// Register for any token if not yet active
+			// Register for any token if not yet active
 			$this->manager->addTransform([$this, 'onNewLine'],
 				'QuoteTransformer:onAny', self::anyRank, 'any', null);
 			$this->isActive = true;
-		// Add initial context to chunks (we'll get rid of it later)
+			// Add initial context to chunks (we'll get rid of it later)
 			$this->currentChunk[] = $prevToken ? $prevToken : '';
 		}
 
