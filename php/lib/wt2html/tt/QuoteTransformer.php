@@ -91,7 +91,7 @@ class QuoteTransformer extends TokenHandler {
 			$this->manager->addTransform([$this, 'onNewLine'],
 				'QuoteTransformer:onNewLine:end', self::quoteAndNewlineRank, 'end');
 			// Register for any token if not yet active
-			$this->manager->addTransform([$this, 'onNewLine'],
+			$this->manager->addTransform([$this, 'onAny'],
 				'QuoteTransformer:onAny', self::anyRank, 'any', null);
 			$this->isActive = true;
 			// Add initial context to chunks (we'll get rid of it later)
