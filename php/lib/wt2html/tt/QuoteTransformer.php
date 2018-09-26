@@ -62,12 +62,8 @@ class QuoteTransformer extends TokenHandler {
 
 // Make a copy of the token context
 	public function _startNewChunk() {
-		if ($this->currentChunk == []) {
-			;
-		} else {
-			$this->chunks[] = $this->currentChunk;
-			$this->currentChunk = [];
-		}
+		$this->chunks[] = $this->currentChunk;
+		$this->currentChunk = [];
 	}
 
 /**

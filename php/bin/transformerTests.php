@@ -186,7 +186,7 @@ class MockTTM {
 						}
 					}
 					return false;
-				})(), "Trying to add a duplicate transformer: " . $t['name']);
+				})(), "Trying to add a duplicate transformer: " . $t['name'] . "\n");
 
 			$this->tokenTransformers[$key][] = $t;
 			usort($this->tokenTransformers[$key], "self::_cmpTransformations");
