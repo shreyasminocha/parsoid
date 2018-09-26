@@ -163,9 +163,17 @@ class QuoteTransformer extends TokenHandler {
 							$ctxPrevToken = $prevChunk[$j] . $ctxPrevToken;
 					}
 				}
-
-				$lastchar = $ctxPrevToken[strlen($ctxPrevToken) - 1];
-				$secondtolastchar = $ctxPrevToken[strlen($ctxPrevToken) - 2];
+				$lastCharIndex = strlen($ctxPrevToken);
+				if ($lastCharIndex >= 1) {
+					$lastchar = $ctxPrevToken[$lastCharIndex - 1];
+				} else {
+					$lastchar = "";
+				}
+				if ($lastCharIndex >= 2) {
+					$secondtolastchar = $ctxPrevToken[$lastCharIndex - 2];
+				} else {
+					$secondtolastchar = "";
+				}
 				if ($lastchar === ' ' && $firstspace === -1) {
 					$firstspace = $i;
 				} else if ($lastchar !== ' ') {
