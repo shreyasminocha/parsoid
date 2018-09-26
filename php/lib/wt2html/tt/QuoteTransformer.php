@@ -213,7 +213,7 @@ class QuoteTransformer extends TokenHandler {
 	// return all collected tokens including the newline
 		$this->currentChunk[] = $token;
 		$this->_startNewChunk();
-		array_shift($this->chunks); // remove 'prevToken' before first quote.
+		array_shift($this->chunks[0]); // remove 'prevToken' before first quote.
 		$res = [ "tokens" => array_flatten(array_merge([], $this->chunks)) ];
 
 		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res["tokens"]));

@@ -266,14 +266,14 @@ class MockTTM {
 				case '[':	// desired result json string for test result verification
 					if (isset($result) && sizeof($result['tokens']) !== 0) {
 						$stringResult = json_encode($result['tokens']);
-						print "SR  : $stringResult\n";
-						print "LINE: $line\n";
+						//print "SR  : $stringResult\n";
+						//print "LINE: $line\n";
 						if ($stringResult === $line) {
-							$console->log($testName . " ==> passed\n");
+							$console->log($testName . " ==> passed\n\n");
 						} else {
 							$console->log($testName . " ==> failed\n");
-							$console->log('line to debug => ' . $line . "\n");
-							$console->log('result line ===> ' . $stringResult . "\n");
+							$console->log("line to debug => " . $line . "\n");
+							$console->log("result line ===> " . $stringResult . "\n");
 						}
 					}
 					$result = null;
@@ -396,12 +396,14 @@ class MockTTM {
 					switch ($line{0}) {
 						case '[':	// desired result json string for test result verification
 							$stringResult = json_encode($result['tokens']);
+							//print "SR  : $stringResult\n";
+							//print "LINE: $line\n";
 							if ($stringResult === $line) {
-								$console->log('line ' . (($pipeLines[$index])[$element] + 1) . " ==> passed\n");
+								$console->log("line " . (($pipeLines[$index])[$element] + 1) . " ==> passed\n");
 							} else {
-								$console->log('line ' . (($pipeLines[$index])[$element] + 1) . " ==> failed\n");
-								$console->log('line to debug => ' . $line . "\n");
-								$console->log('result line ===> ' . $stringResult . "\n");
+								$console->log("line " . (($pipeLines[$index])[$element] + 1) . " ==> failed\n");
+								$console->log("line to debug => " . $line . "\n");
+								$console->log("result line ===> " . $stringResult . "\n");
 							}
 							$result = null;
 							break;
