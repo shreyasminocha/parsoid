@@ -158,14 +158,14 @@ class QuoteTransformer extends TokenHandler {
 			// at the raw unparsed source here)
 					$prevChunk = $this->chunks[$i - 1];
 					$ctxPrevToken = '';
-					for ($j = sizeof($prevChunk) - 1; sizeof($ctxPrevToken) < 2 && $j >= 0; $j--) {
-						if ($prevChunk[$j]->constructor === String) {
-							$ctxPrevToken = array($prevChunk[$j], $ctxPrevToken);
+					for ($j = sizeof($prevChunk) - 1; strlen($ctxPrevToken) < 2 && $j >= 0; $j--) {
+						if (gettype($prevChunk[$j]) == 'string') {
+							$ctxPrevToken = $prevChunk[$j] . $ctxPrevToken;
 					}
 				}
 
-				$lastchar = $ctxPrevToken[sizeof($ctxPrevToken) - 1];
-				$secondtolastchar = $ctxPrevToken[sizeof($ctxPrevToken) - 2];
+				$lastchar = $ctxPrevToken[strlen($ctxPrevToken) - 1];
+				$secondtolastchar = $ctxPrevToken[strlen($ctxPrevToken) - 2];
 				if ($lastchar === ' ' && $firstspace === -1) {
 					$firstspace = $i;
 				} else if ($lastchar !== ' ') {
