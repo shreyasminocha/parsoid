@@ -194,7 +194,7 @@ class MockTTM {
 		}
 	}
 
-	private function removeMatchingTransform($transformers, $rank) {
+	private function removeMatchingTransform(&$transformers, $rank) {
 		$i = 0;
 		$n = sizeof($transformers);
 		while ($i < $n && $rank !== $transformers[$i]["rank"]) {
