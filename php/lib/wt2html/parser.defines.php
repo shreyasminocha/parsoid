@@ -84,7 +84,7 @@ class Token {
 	public function setAttribute($name, $value) {
 		// requireUtil();
 		// First look for the attribute and change the last match if found.
-		for ($i = $this->attribs->length - 1; $i >= 0; $i--) {
+		for ($i = sizeof($this->attribs) - 1; $i >= 0; $i--) {
 			$kv = $this->attribs[$i];
 			$k = $kv->k;
 			if (gettype($k) == "string" && $k->toLowerCase() === $name) {
