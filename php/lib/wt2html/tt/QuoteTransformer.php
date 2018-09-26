@@ -12,6 +12,18 @@ require_once (__DIR__.'/../parser.defines.php');
 use Parsoid\Lib\Wt2html\TagTk;
 use Parsoid\Lib\Wt2html\EndTagTk;
 
+function array_flatten($array) {
+   $ret = [];
+   foreach ($array as $key => $value) {
+       if (is_array($value)) {
+		   $ret = array_merge($ret, array_flatten($value));
+		  }
+       else {$ret[$key] = $value;}
+   }
+   return $ret;
+
+}
+
 /**
  * @class
  * @extends module:wt2html/tt/TokenHandler
@@ -66,7 +78,7 @@ class QuoteTransformer extends TokenHandler {
  */
 	public function onQuote($token, $tokenManager, $prevToken) {
 		#var_dump($token);
-		$v = $token->value;
+		$v = $token->getAttribute('value');
 		$qlen = strlen($v);
 		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "QUOTE |", json_encode($token));
 
@@ -197,11 +209,9 @@ class QuoteTransformer extends TokenHandler {
 		$this->currentChunk[] = $token;
 		$this->_startNewChunk();
 		array_shift($this->chunks); // remove 'prevToken' before first quote.
-		//$res = [ "tokens" => array_merge([], $this->chunks) ];
-		$res = array_merge($this->chunks);
+		$res = [ "tokens" => array_flatten(array_merge([], $this->chunks)) ];
 
-		//$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res["tokens"]));
-		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res));
+		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res["tokens"]));
 
 	// prepare for next line
 		$this->reset();
@@ -213,8 +223,7 @@ class QuoteTransformer extends TokenHandler {
 		$this->manager->removeTransform([$this, "quoteAndNewlineRank"], 'newline');
 		$this->manager->removeTransform([$this, "anyRank"], 'any');
 
-		//return $res;
-		return ["tokens" => $res];
+		return $res;
 	}
 
 /**

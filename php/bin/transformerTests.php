@@ -268,10 +268,10 @@ class MockTTM {
 						print "SR  : $stringResult\n";
 						print "LINE: $line\n";
 						if ($stringResult === $line) {
-							$console->log($testName . ' ==> passed\n');
+							$console->log($testName . " ==> passed\n");
 						} else {
-							$console->log($testName . ' ==> failed');
-							$console->log('line to debug => ' . $line);
+							$console->log($testName . " ==> failed\n");
+							$console->log('line to debug => ' . $line . "\n");
 							$console->log('result line ===> ' . $stringResult . "\n");
 						}
 					}
@@ -285,6 +285,7 @@ class MockTTM {
 					$jsTk = json_decode($line, true);
 					switch(gettype($jsTk)) {
 						case "string":
+							$token = $jsTk;
 						   break;
 						case "array":
 							switch($jsTk['type']) {
@@ -292,8 +293,7 @@ class MockTTM {
 								$token = new SelfclosingTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
 								// HACK!
 								if ($jsTk['value']) {
-									//$token->addAttribute("value", $jsTk['value']);
-									$token->value = $jsTk['value'];
+									$token->addAttribute("value", $jsTk['value']);
 								}
 								break;
 							case "TagTk":
@@ -396,10 +396,10 @@ class MockTTM {
 						case '[':	// desired result json string for test result verification
 							$stringResult = json_encode($result['tokens']);
 							if ($stringResult === $line) {
-								$console->log('line ' . (($pipeLines[$index])[$element] + 1) . ' ==> passed\n');
+								$console->log('line ' . (($pipeLines[$index])[$element] + 1) . " ==> passed\n");
 							} else {
-								$console->log('line ' . (($pipeLines[$index])[$element] + 1) . ' ==> failed');
-								$console->log('line to debug => ' . $line);
+								$console->log('line ' . (($pipeLines[$index])[$element] + 1) . " ==> failed\n");
+								$console->log('line to debug => ' . $line . "\n");
 								$console->log('result line ===> ' . $stringResult . "\n");
 							}
 							$result = null;
@@ -437,6 +437,7 @@ class MockTTM {
 						$jsTk = json_decode($line, true);
 						switch(gettype($jsTk)) {
 							case "string":
+							   $token = $jsTk;
 								break;
 							case "array":
 								switch($jsTk['type']) {
@@ -444,8 +445,7 @@ class MockTTM {
 										$token = new SelfclosingTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
 										// HACK!
 										if ($jsTk['value']) {
-											// $token->addAttribute("value", $jsTk['value']);
-											$token->value = $jsTk['value'];
+											$token->addAttribute("value", $jsTk['value']);
 										}
 										break;
 									case "TagTk":

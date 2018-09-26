@@ -37,6 +37,10 @@ class KV {
  * @class
  */
 class Token {
+	public function getType() {
+		return $this->type;
+	}
+
 	/**
 	 * Generic set attribute method.
 	 *
@@ -231,27 +235,14 @@ class TagTk extends Token {
 	 * @param {Object} dataAttribs Data-parsoid object.
 	 */
 	public function __construct($name, $attribs = [], $dataAttribs = []) {
+		$this->type = "TagTk";
 		/** @type {string} */
 		$this->name = $name;
 		/** @type {KV[]} */
 		$this->attribs = $attribs;
 		/** @type {Object} */
 		$this->dataAttribs = $dataAttribs;
-
-		$this->type = $this->getType();
     }
-
-	public function getType() {
-		return "TagTk";
-	}
-
-	/**
-	 * @return {string}
-	 */
-	public function toJSON() {
-		$this->type = 'TagTk';  // added this instead:
-		return $this;           // was:  $Object->assign({ type: 'TagTk' }, $this);
-	}
 }
 
 /**
@@ -267,28 +258,14 @@ class EndTagTk extends Token {
 	* @param {Object} dataAttribs
 	*/
 	public function __construct($name, $attribs = [], $dataAttribs = []) {
+		$this->type = "EndTagTk";
 			/** @type {string} */
 		$this->name = $name;
 			/** @type {KV[]} */
 		$this->attribs = $attribs;
 			/** @type {Object} */
 		$this->dataAttribs = $dataAttribs;
-
-		$this->type = $this->getType();
 	}
-
-	public function getType() {
-		return "EndTagTk";
-	}
-
-	/**
-	 * @return {string}
-	 */
-	public function toJSON() {
-		// return Object.assign({ type: 'EndTagTk' }, this);
-	    return $this->type = "EndTagTk";
-	}
-
 }
 
 /**
@@ -303,26 +280,13 @@ class SelfclosingTagTk extends Token {
 	 * @param {Object} dataAttribs
 	 */
 	public function __construct($name, $attribs = [], $dataAttribs = []) {
+		$this->type = "SelfclosingTagTk";
 			/** @type {string} */
 		$this->name = $name;
 			/** @type {KV[]} */
 		$this->attribs = $attribs;
 			/** @type {Object} */
 		$this->dataAttribs = $dataAttribs;
-
-		$this->type = $this->getType();
-	}
-
-	public function getType() {
-		return "SelfclosingTagTk";
-	}
-
-	/**
-	 * @return {string}
-	 */
-	public function toJSON(){
-		//return $Object->assign({ type: 'SelfclosingTagTk' }, $this);
-		return $this->type = 'SelfclosingTagTk';
 	}
 }
 
@@ -336,26 +300,11 @@ class NlTk extends Token {
 	 * @param {Array} tsr The TSR of the newline(s).
 	 */
 	public function __construct($tsr) {
+		$this->type = "NlTk";
 		if (isset($tsr)) {
 			/** @type {Object} */
 			$this->dataAttribs = ["tsr"=>$tsr];
 		}
-
-		$this->type = $this->getType();
-	}
-
-	public function getType() {
-		return "NlTk";
-	}
-
-	/**
-	 * Convert the token to JSON.
-	 *
-	 * @return {string} JSON string.
-	 */
-	public function toJSON() {
-		// return $Object->assign({ type: 'NlTk' }, $this);
-		return $this->type = "NlTk";
 	}
 }
 
@@ -369,6 +318,7 @@ class CommentTk extends Token {
 	 * @param {Object} dataAttribs data-parsoid object.
 	 */
 	public function __construct($value, $dataAttribs) {
+		$this->type = "CommentTk";
 		/** @type {string} */
 		$this->value = $value;
 		// won't survive in the DOM, but still useful for token serialization
@@ -376,33 +326,13 @@ class CommentTk extends Token {
 			/** @type {Object} */
 			$this->dataAttribs = $dataAttribs;
 		}
-
-		$this->type = $this->getType();
-	}
-
-	public function getType() {
-		return "CommentTk";
-	}
-
-	public function toJSON() {
-		// return $Object->assign({ type: 'COMMENT' }, $this);
-		return $this->type = "COMMENT";
 	}
 }
 
 	/* -------------------- EOFTk -------------------- */
 class EOFTk extends Token {
 	public function __construct() {
-		$this->type = $this->getType();
-	}
-
-	public function toJSON() {
-		// return $Object->assign({type: 'EOFTk'}, $this);
-		return $this->type = "EOFtk";
-	}
-
-	public function getType() {
-		return "EOFTk";
+		$this->type = "EOFTk";
 	}
 }
 
