@@ -11,6 +11,7 @@ require_once (__DIR__.'/../parser.defines.php');
 
 use Parsoid\Lib\Wt2html\TagTk;
 use Parsoid\Lib\Wt2html\EndTagTk;
+use Parsoid\Lib\Wt2html\SelfclosingTagTk;
 
 function array_flatten($array) {
    $ret = [];
