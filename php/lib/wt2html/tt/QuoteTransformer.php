@@ -38,9 +38,9 @@ class QuoteTransformer extends TokenHandler {
 	// Chunks alternate between quote tokens and sequences of non-quote
 	// tokens.  The quote tokens are later replaced with the actual tag
 	// token for italic or bold.  The first chunk is a non-quote chunk.
-		$this->chunks = array();
+		$this->chunks = [];
 	// The current chunk we're accumulating into.
-		$this->currentChunk = array();
+		$this->currentChunk = [];
 	// last italic / last bold open tag seen.  Used to add autoInserted flags
 	// where necessary.
 		$this->last = [];
@@ -50,8 +50,12 @@ class QuoteTransformer extends TokenHandler {
 
 // Make a copy of the token context
 	public function _startNewChunk() {
-		$this->chunks[] = $this->currentChunk;
-		$this->currentChunk = [];
+		if ($this->currentChunk == []) {
+			;
+		} else {
+			$this->chunks[] = $this->currentChunk;
+			$this->currentChunk = [];
+		}
 	}
 
 /**
@@ -62,7 +66,7 @@ class QuoteTransformer extends TokenHandler {
  */
 	public function onQuote($token, $tokenManager, $prevToken) {
 		#var_dump($token);
-		$v = $token->getAttribute("value");
+		$v = $token->value;
 		$qlen = strlen($v);
 		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "QUOTE |", json_encode($token));
 
@@ -192,10 +196,12 @@ class QuoteTransformer extends TokenHandler {
 	// return all collected tokens including the newline
 		$this->currentChunk[] = $token;
 		$this->_startNewChunk();
-		array_shift($this->chunks[0]); // remove 'prevToken' before first quote.
-		$res = [ "tokens" => array_merge([], $this->chunks) ];
+		array_shift($this->chunks); // remove 'prevToken' before first quote.
+		//$res = [ "tokens" => array_merge([], $this->chunks) ];
+		$res = array_merge($this->chunks);
 
-		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res["tokens"]));
+		//$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res["tokens"]));
+		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res));
 
 	// prepare for next line
 		$this->reset();
@@ -207,7 +213,8 @@ class QuoteTransformer extends TokenHandler {
 		$this->manager->removeTransform([$this, "quoteAndNewlineRank"], 'newline');
 		$this->manager->removeTransform([$this, "anyRank"], 'any');
 
-		return $res;
+		//return $res;
+		return ["tokens" => $res];
 	}
 
 /**

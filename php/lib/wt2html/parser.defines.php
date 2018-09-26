@@ -237,6 +237,8 @@ class TagTk extends Token {
 		$this->attribs = $attribs;
 		/** @type {Object} */
 		$this->dataAttribs = $dataAttribs;
+
+		$this->type = $this->getType();
     }
 
 	public function getType() {
@@ -271,6 +273,8 @@ class EndTagTk extends Token {
 		$this->attribs = $attribs;
 			/** @type {Object} */
 		$this->dataAttribs = $dataAttribs;
+
+		$this->type = $this->getType();
 	}
 
 	public function getType() {
@@ -305,6 +309,8 @@ class SelfclosingTagTk extends Token {
 		$this->attribs = $attribs;
 			/** @type {Object} */
 		$this->dataAttribs = $dataAttribs;
+
+		$this->type = $this->getType();
 	}
 
 	public function getType() {
@@ -334,6 +340,8 @@ class NlTk extends Token {
 			/** @type {Object} */
 			$this->dataAttribs = ["tsr"=>$tsr];
 		}
+
+		$this->type = $this->getType();
 	}
 
 	public function getType() {
@@ -368,6 +376,8 @@ class CommentTk extends Token {
 			/** @type {Object} */
 			$this->dataAttribs = $dataAttribs;
 		}
+
+		$this->type = $this->getType();
 	}
 
 	public function getType() {
@@ -383,6 +393,7 @@ class CommentTk extends Token {
 	/* -------------------- EOFTk -------------------- */
 class EOFTk extends Token {
 	public function __construct() {
+		$this->type = $this->getType();
 	}
 
 	public function toJSON() {
