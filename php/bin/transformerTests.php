@@ -73,6 +73,11 @@ use Parsoid\Lib\Wt2html\NlTk;
 use Parsoid\Lib\Wt2html\CommentTk;
 use Parsoid\Lib\Wt2html\EOFTk;
 
+$cachedState = false;
+$cachedTestLines = '';
+$cachedPipeLines = '';
+$cachedPipeLinesLength = [];
+
 function makeMap( $a ) {
 	$map = [];
 	foreach ( $a as $e ) {
@@ -241,12 +246,27 @@ class MockTTM {
 
 // Use the TokenTransformManager.js guts (extracted essential functionality)
 // to dispatch each token to the registered token transform function
-	public function ProcessTestFile($fileName) {
+	public function ProcessTestFile($commandLine) {
 		global $console;
+		global $cachedState;
+		global $cachedTestLines;
 
-		$testFile = file_get_contents($fileName);
-		$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
-		$testLines = explode("\n", $testFile);
+		if (isset($commandLine->timingMode)) {
+			if ($cachedState == false) {
+				$cachedState = true;
+				$testFile = file_get_contents($commandLine->inputFile);
+				$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
+				$testLines = explode("\n", $testFile);
+				$cachedTestLines = $testLines;
+			} else {
+				$testLines = $cachedTestLines;
+			}
+		} else {
+			$testFile = file_get_contents($commandLine->inputFile);
+			$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
+			$testLines = explode("\n", $testFile);
+		}
+
 		for ($index = 0; $index < sizeof($testLines); $index++) {
 			$line = $testLines[$index];
 			if (mb_strlen($line) < 1) {
@@ -269,7 +289,9 @@ class MockTTM {
 						//print "SR  : $stringResult\n";
 						//print "LINE: $line\n";
 						if ($stringResult === $line) {
-							$console->log($testName . " ==> passed\n\n");
+							if(!isset($commandLine->timingMode)) {
+								$console->log($testName . " ==> passed\n\n");
+							}
 						} else {
 							$console->log($testName . " ==> failed\n");
 							$console->log("line to debug => " . $line . "\n");
@@ -379,14 +401,37 @@ class MockTTM {
 
 // Use the TokenTransformManager.js guts (extracted essential functionality)
 // to dispatch each token to the registered token transform function
-	public function ProcessWikitextFile($tokenTransformer, $fileName) {
+	public function ProcessWikitextFile($tokenTransformer, $commandLine) {
 		global $console;
+		global $cachedState;
+		global $cachedTestLines;
+		global $cachedPipeLines;
+		global $cachedPipeLinesLength;
 
-		$testFile = file_get_contents($fileName);
-		$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
-		$testLines = explode("\n", $testFile);
-		$pipeLines = self::CreatePipelines($testLines);
-		$pipeLinesLength = sizeof($pipeLines);
+		if (isset($commandLine->timingMode)) {
+			if ($cachedState == false) {
+				$cachedState = true;
+				$testFile = file_get_contents($commandLine->inputFile);
+				$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
+				$testLines = explode("\n", $testFile);
+				$pipeLines = self::CreatePipelines($testLines);
+				$pipeLinesLength = sizeof($pipeLines);
+				$cachedTestLines = $testLines;
+				$cachedPipeLines = $pipeLines;
+				$cachedPipeLinesLength = $pipeLinesLength;
+			} else {
+				$testLines = $cachedTestLines;
+				$pipeLines = $cachedPipeLines;
+				$pipeLinesLength = $cachedPipeLinesLength;
+			}
+		} else {
+			$testFile = file_get_contents($commandLine->inputFile);
+			$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
+			$testLines = explode("\n", $testFile);
+			$pipeLines = self::CreatePipelines($testLines);
+			$pipeLinesLength = sizeof($pipeLines);
+		}
+
 		for ($index = 0; $index < $pipeLinesLength; $index++) {
 			if (isset($pipeLines[$index])) {
 				$tokenTransformer->manager->pipelineId = $index;
@@ -399,7 +444,9 @@ class MockTTM {
 							//print "SR  : $stringResult\n";
 							//print "LINE: $line\n";
 							if ($stringResult === $line) {
-								$console->log("line " . (($pipeLines[$index])[$element] + 1) . " ==> passed\n");
+								if(!isset($commandLine->timingMode)) {
+									$console->log("line " . (($pipeLines[$index])[$element] + 1) . " ==> passed\n");
+								}
 							} else {
 								$console->log("line " . (($pipeLines[$index])[$element] + 1) . " ==> failed\n");
 								$console->log("line to debug => " . $line . "\n");
@@ -495,28 +542,42 @@ class MockTTM {
 		}
 	}
 
-	public static function unitTest($tokenTransformer, $testFile) {
+	public function unitTest($tokenTransformer, $commandLine) {
 		global $console;
 
-		$console->log("Starting stand alone unit test running file " . $testFile . "\n");
-		$tokenTransformer->manager->ProcessTestFile($testFile);
-		$console->log("Ending stand alone unit test running file " . $testFile . "\n");
+		if(!isset($commandLine->timingMode)) {
+			$console->log("Starting stand alone unit test running file " . $commandLine->inputFile . "\n");
+		}
+		$tokenTransformer->manager->ProcessTestFile($commandLine);
+		if(!isset($commandLine->timingMode)) {
+			$console->log("Ending stand alone unit test running file " . $commandLine->inputFile . "\n");
+		}
 	}
 
-	public static function wikitextTest($tokenTransformer, $testFile) {
+	public function wikitextTest($tokenTransformer, $commandLine) {
 		global $console;
 
-		$console->log("Starting stand alone wikitext test running file " . $testFile . "\n");
-		$tokenTransformer->manager->ProcessWikitextFile($tokenTransformer, $testFile);
-		$console->log("Ending stand alone wikitext test running file " . $testFile . "\n");
+		if(!isset($commandLine->timingMode)) {
+			$console->log("Starting stand alone wikitext test running file " . $commandLine->inputFile . "\n");
+		}
+		$tokenTransformer->manager->ProcessWikitextFile($tokenTransformer, $commandLine);
+		if(!isset($commandLine->timingMode)) {
+			$console->log("Ending stand alone wikitext test running file " . $commandLine->inputFile . "\n");
+		}
 	}
 };
 
 function selectTestType($commandLine, $manager, $handler) {
-	if (isset($commandLine->manual)) {
-		$manager->unitTest($handler, $commandLine->inputFile);
-	} else {
-		$manager->wikitextTest($handler, $commandLine->inputFile);
+	$iterator = 1;
+	if(isset($commandLine->timingMode)) {
+		$iterator = 10000;
+	}
+	while ($iterator--) {
+		if (isset($commandLine->manual)) {
+			$manager->unitTest($handler, $commandLine);
+		} else {
+			$manager->wikitextTest($handler, $commandLine);
+		}
 	}
 }
 
@@ -559,7 +620,7 @@ function runTests($argc, $argv) {
     $opts = processArguments($argc, $argv);
 
 	if (isset($opts->help)) {
-		//$opts->showHelp();
+		$console->log('must specify [--manual] [--log] [--timingMode] --TransformerName --inputFile /path/filename');
 		return;
 	}
 
@@ -575,6 +636,10 @@ function runTests($argc, $argv) {
 		$manager->env = [ 'log' => [ $manager, 'log' ] ];
 	} else {
 		$manager->env = [ 'log' => function () {} ];	// this disables detailed logging
+	}
+
+	if (isset($opts->timingMode)) {
+		$console->log("Timing Mode enabled, no console output expected till test completes\n");
 	}
 
 	$startTime = microtime(true);
@@ -608,7 +673,7 @@ function runTests($argc, $argv) {
 	}
 
 	$totalTime = microtime(true) - $startTime;
-	$console->log('Total transformer execution time = ' . $totalTime . ' milliseconds');
+	$console->log('Total transformer execution time = ' . $totalTime * 1000 . ' milliseconds');
 }
 
 runTests($argc, $argv);

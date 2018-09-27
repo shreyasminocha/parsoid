@@ -57,6 +57,11 @@ var Util = require('../lib/utils/Util.js').Util;
 var yargs = require('yargs');
 var fs = require('fs');
 
+var cachedState = false;
+var cachedTestLines = '';
+var cachedPipeLines = '';
+var cachedPipeLinesLength = [];
+
 function MockTTM(env, options) {
 	this.env = env;
 	this.pipelineId = 0;
@@ -168,12 +173,27 @@ MockTTM.prototype.getTransforms = function(token, minRank) {
 
 // Use the TokenTransformManager.js guts (extracted essential functionality)
 // to dispatch each token to the registered token transform function
-MockTTM.prototype.ProcessTestFile = function(fileName) {
+MockTTM.prototype.ProcessTestFile = function(commandLine) {
 	var transformerName;
 	var testName;
 	var result;
-	var testFile = fs.readFileSync(fileName, 'utf8');
-	var testLines = testFile.split('\n');
+	var testFile;
+	var testLines;
+
+	if (commandLine.timingMode) {
+		if (cachedState === false) {
+			cachedState = true;
+			testFile = fs.readFileSync(commandLine.inputFile, 'utf8');
+			testLines = testFile.split('\n');
+			cachedTestLines = testLines;
+		} else {
+			testLines = cachedTestLines;
+		}
+	} else {
+		testFile = fs.readFileSync(commandLine.inputFile, 'utf8');
+		testLines = testFile.split('\n');
+	}
+
 	for (var index = 0; index < testLines.length; index++) {
 		var line = testLines[index];
 		switch (line.charAt(0)) {
@@ -191,7 +211,9 @@ MockTTM.prototype.ProcessTestFile = function(fileName) {
 				if (result !== undefined && result.tokens.length !== 0) {
 					var stringResult = JSON.stringify(result.tokens);
 					if (stringResult === line) {
-						console.log(testName + ' ==> passed\n');
+						if (!commandLine.timingMode) {
+							console.log(testName + ' ==> passed\n');
+						}
 					} else {
 						console.log(testName + ' ==> failed');
 						console.log('line to debug => ' + line);
@@ -269,12 +291,35 @@ function CreatePipelines(lines) {
 
 // Use the TokenTransformManager.js guts (extracted essential functionality)
 // to dispatch each token to the registered token transform function
-MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, fileName) {
+MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) {
 	var result;
-	var testFile = fs.readFileSync(fileName, 'utf8');
-	var testLines = testFile.split('\n');
-	var pipeLines = CreatePipelines(testLines);
-	var pipeLinesLength = pipeLines.length;
+	var testFile;
+	var testLines;
+	var pipeLines;
+	var pipeLinesLength;
+
+	if (commandLine.timingMode) {
+		if (cachedState === false) {
+			cachedState = true;
+			testFile = fs.readFileSync(commandLine.inputFile, 'utf8');
+			testLines = testFile.split('\n');
+			pipeLines = CreatePipelines(testLines);
+			pipeLinesLength = pipeLines.length;
+			cachedTestLines = testLines;
+			cachedPipeLines = pipeLines;
+			cachedPipeLinesLength = pipeLinesLength;
+		} else {
+			testLines = cachedTestLines;
+			pipeLines = cachedPipeLines;
+			pipeLinesLength = cachedPipeLinesLength;
+		}
+	} else {
+		testFile = fs.readFileSync(commandLine.inputFile, 'utf8');
+		testLines = testFile.split('\n');
+		pipeLines = CreatePipelines(testLines);
+		pipeLinesLength = pipeLines.length;
+	}
+
 	for (var index = 0; index < pipeLinesLength; index++) {
 		if (pipeLines[index] !== undefined) {
 			tokenTransformer.manager.pipelineId = index;
@@ -285,7 +330,9 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, fileName) {
 					case '[':	// desired result json string for test result verification
 						var stringResult = JSON.stringify(result.tokens);
 						if (stringResult === line) {
-							console.log('line ' + ((pipeLines[index])[element] + 1) + ' ==> passed\n');
+							if (!commandLine.timingMode) {
+								console.log('line ' + ((pipeLines[index])[element] + 1) + ' ==> passed\n');
+							}
 						} else {
 							console.log('line ' + ((pipeLines[index])[element] + 1) + ' ==> failed');
 							console.log('line to debug => ' + line);
@@ -327,16 +374,24 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, fileName) {
 	}
 };
 
-MockTTM.prototype.unitTest = function(tokenTransformer, testFile) {
-	console.log('Starting stand alone unit test running file ' + testFile + '\n');
-	tokenTransformer.manager.ProcessTestFile(testFile);
-	console.log('Ending stand alone unit test running file ' + testFile + '\n');
+MockTTM.prototype.unitTest = function(tokenTransformer, commandLine) {
+	if (!commandLine.timingMode) {
+		console.log('Starting stand alone unit test running file ' + commandLine.inputFile + '\n');
+	}
+	tokenTransformer.manager.ProcessTestFile(commandLine);
+	if (!commandLine.timingMode) {
+		console.log('Ending stand alone unit test running file ' + commandLine.inputFile + '\n');
+	}
 };
 
-MockTTM.prototype.wikitextTest = function(tokenTransformer, testFile) {
-	console.log('Starting stand alone wikitext test running file ' + testFile + '\n');
-	tokenTransformer.manager.ProcessWikitextFile(tokenTransformer, testFile);
-	console.log('Ending stand alone wikitext test running file ' + testFile + '\n');
+MockTTM.prototype.wikitextTest = function(tokenTransformer, commandLine) {
+	if (!commandLine.timingMode) {
+		console.log('Starting stand alone wikitext test running file ' + commandLine.inputFile + '\n');
+	}
+	tokenTransformer.manager.ProcessWikitextFile(tokenTransformer, commandLine);
+	if (!commandLine.timingMode) {
+		console.log('Ending stand alone wikitext test running file ' + commandLine.inputFile + '\n');
+	}
 };
 
 var opts = yargs.usage('Usage: $0 [options] --TransformerName --inputFile /path/filename', {
@@ -346,7 +401,10 @@ var opts = yargs.usage('Usage: $0 [options] --TransformerName --inputFile /path/
 			'test validation. See tests/transformTests.txt to examine and run',
 			'a manual test. The --manual flag is optional defaulting to parsoid',
 			'generated test format (which has machine generated context to aid',
-			'in debugging. The --log option provides additional debug content.',
+			'in debugging. The --timingMode flag disables console output and',
+			'caches the file IO and related text processing and then iterates',
+			'the test 10000 times',
+			' The --log option provides additional debug content.',
 			'Current handlers supported are: QuoteTransformer, ListHandler',
 			'ParagraphWrapper, PreHandler.',
 			'TokenStreamPatcher, BehaviorSwitchHandler and SanitizerHandler are',
@@ -387,10 +445,16 @@ var opts = yargs.usage('Usage: $0 [options] --TransformerName --inputFile /path/
 });
 
 function selectTestType(commandLine, manager, handler) {
-	if (commandLine.manual) {
-		manager.unitTest(handler, commandLine.inputFile);
-	} else {
-		manager.wikitextTest(handler, commandLine.inputFile);
+	var iterator = 1;
+	if (commandLine.timingMode) {
+		iterator = 10000;
+	}
+	while (iterator--) {
+		if (commandLine.manual) {
+			manager.unitTest(handler, commandLine);
+		} else {
+			manager.wikitextTest(handler, commandLine);
+		}
 	}
 }
 
@@ -420,6 +484,10 @@ function runTests() {
 	}
 
 	var manager = new MockTTM(mockEnv, {});
+
+	if (argv.timingMode) {
+		console.log("\nTiming Mode enabled, no console output expected till test completes\n");
+	}
 
 	var startTime = Date.now();
 
