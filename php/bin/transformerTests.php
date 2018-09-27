@@ -125,6 +125,7 @@ class MockTTM {
 		$this->defaultTransformers = [];	// any transforms
 		$this->tokenTransformers   = [];	// non-any transforms
 		$this->console = new console;
+		$this->tokenTime = 0;
 		$this->init();
 	}
 
@@ -221,7 +222,7 @@ class MockTTM {
 	}
 
 	public function getTransforms($token, $minRank) {
-		$isStr = gettype($token) == "string";
+		$isStr = gettype($token) === "string";
 		$type = $isStr ? "String" : $token->getType();
 		$name = $isStr ? "" : (isset($token->name) ? $token->name : "");
 		$tkType = $this->tkConstructorToTkTypeMap[$type];
@@ -286,8 +287,8 @@ class MockTTM {
 				case '[':	// desired result json string for test result verification
 					if (isset($result) && sizeof($result['tokens']) !== 0) {
 						$stringResult = json_encode($result['tokens']);
-						//print "SR  : $stringResult\n";
-						//print "LINE: $line\n";
+						# print "SR  : $stringResult\n";
+						# print "LINE: $line\n";
 						if ($stringResult === $line) {
 							if(!isset($commandLine->timingMode)) {
 								$console->log($testName . " ==> passed\n\n");
@@ -306,12 +307,10 @@ class MockTTM {
 						$result = [ 'tokens' => [] ];
 					}
 					$jsTk = json_decode($line, true);
-					switch(gettype($jsTk)) {
-						case "string":
-							$token = $jsTk;
-						   break;
-						case "array":
-							switch($jsTk['type']) {
+					if (gettype($jsTk) === "string") {
+						$token = $jsTk;
+					} else {
+						switch($jsTk['type']) {
 							case "SelfclosingTagTk":
 								$token = new SelfclosingTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
 								// HACK!
@@ -334,16 +333,17 @@ class MockTTM {
 							case "COMMENT":
 								$token = new CommentTk($jsTk["value"], $jsTk['dataAttribs']);
 								break;
-							}
-							break;
+						}
 					}
-					$res = [ 'token' => $token ];
+
 					# print "PROCESSING $line\n";
+					$startTime = microtime(true);
+					$res = [ 'token' => $token ];
 					$ts = $this->getTransforms($token, 2.0);
+
 					// Push the token through the transformations till it morphs
 					$j = $ts['first'];
 					$numTransforms = sizeof($ts['transforms']);
-					#print "T: ".$token->getType().": ".$numTransforms."\n";
 					while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"])) {
 						$transformer = $ts['transforms'][$j];
 						if ($transformerName === substr($transformer["name"], 0, strlen($transformerName))) {
@@ -357,6 +357,7 @@ class MockTTM {
 						}
 						$j++;
 					}
+					$this->tokenTime += (microtime(true) - $startTime);
 					break;
 			}
 		}
@@ -372,14 +373,12 @@ class MockTTM {
 		$maxPipelineID = 0;
 		$LineToPipeMap = array();
 		$LineToPipeMap = array_pad($LineToPipeMap, $numberOfTextLines, 0);
-		$i;
-		$pipe;
 		for ($i = 0; $i < $numberOfTextLines; ++$i) {
 			$number = substr($lines[$i], 0, 4);
 			preg_match('/\\d+/', $number, $number);
 			$number = implode("", $number);
 			if (ctype_digit($number)) {
-				$pipe = intval($number, 10);    // pipeline ID's should not exceed 9999\
+				$pipe = intval($number, 10);    // pipeline ID's should not exceed 9999
 				if ($maxPipelineID < $pipe) {
 					$maxPipelineID = $pipe;
 				}
@@ -441,8 +440,8 @@ class MockTTM {
 					switch ($line{0}) {
 						case '[':	// desired result json string for test result verification
 							$stringResult = json_encode($result['tokens']);
-							//print "SR  : $stringResult\n";
-							//print "LINE: $line\n";
+							# print "SR  : $stringResult\n";
+							# print "LINE: $line\n";
 							if ($stringResult === $line) {
 								if(!isset($commandLine->timingMode)) {
 									$console->log("line " . (($pipeLines[$index])[$element] + 1) . " ==> passed\n");
@@ -456,40 +455,13 @@ class MockTTM {
 							break;
 						case '{':
 						default:
-/*							if (!isset($result)) {
+							if (!isset($result)) {
 								$result = [ 'tokens' => [] ];
 							}
-							$token = json_encode($line);
-							if ($token->constructor !== String) {	// cast object to token type
-								$token->prototype = $token->constructor = $defines[$token->type];
-							}
-							$ts = $this->getTransforms($token, 2.0);
-							$res = [ 'token' => $token ];
-
-							// Push the token through the transformations till it morphs
-							$j = $ts['first'];
-							$numTransforms = sizeof($ts['transforms']);
-							while ($j < $numTransforms && ($token === $res->token)) {
-								$transformer = $ts['transforms'][$j];
-								// Transform the token.
-								$res = $transformer["transform"]($token, $this);
-								if ($res->tokens) {
-									$result->tokens = array_merge($result->tokens, $res->tokens);
-								} else if ($res->token && $res->token !== $token) {
-									$result->tokens[] = $res->token;
-								}
-								$j++;
-							}
-*/
-						if (!isset($result)) {
-							$result = [ 'tokens' => [] ];
-						}
-						$jsTk = json_decode($line, true);
-						switch(gettype($jsTk)) {
-							case "string":
-							   $token = $jsTk;
-								break;
-							case "array":
+							$jsTk = json_decode($line, true);
+							if (gettype($jsTk) === "string") {
+								$token = $jsTk;
+							} else {
 								switch($jsTk['type']) {
 									case "SelfclosingTagTk":
 										$token = new SelfclosingTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
@@ -514,26 +486,28 @@ class MockTTM {
 										$token = new CommentTk($jsTk["value"], $jsTk['dataAttribs']);
 										break;
 								}
-								break;
-						}
-						$res = [ 'token' => $token ];
-						# print "PROCESSING $line\n";
-						$ts = $this->getTransforms($token, 2.0);
-						// Push the token through the transformations till it morphs
-						$j = $ts['first'];
-						$numTransforms = sizeof($ts['transforms']);
-						#print "T: ".$token->getType().": ".$numTransforms."\n";
-						while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"])) {
-							$transformer = $ts['transforms'][$j];
-							// Transform the token.
-							$res = $transformer["transform"]($token, $this, null);
-							if (isset($res['tokens'])) {
-								$result['tokens'] = array_merge($result['tokens'], $res['tokens']);
-							} else if (isset($res['token']) && $res['token'] !== $token) {
-								$result['tokens'][] = $res['token'];
 							}
-							$j++;
-						}
+
+							# print "PROCESSING $line\n";
+							$startTime = microtime(true);
+							$res = [ 'token' => $token ];
+							$ts = $this->getTransforms($token, 2.0);
+
+							// Push the token through the transformations till it morphs
+							$j = $ts['first'];
+							$numTransforms = sizeof($ts['transforms']);
+							while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"])) {
+								$transformer = $ts['transforms'][$j];
+								// Transform the token.
+								$res = $transformer["transform"]($token, $this, null);
+								if (isset($res['tokens'])) {
+									$result['tokens'] = array_merge($result['tokens'], $res['tokens']);
+								} else if (isset($res['token']) && $res['token'] !== $token) {
+									$result['tokens'][] = $res['token'];
+								}
+								$j++;
+							}
+							$this->tokenTime += (microtime(true) - $startTime);
 
 							break;
 					}
@@ -617,7 +591,7 @@ function processArguments($argc, $argv) {
 function runTests($argc, $argv) {
 	global $console;
 
-    $opts = processArguments($argc, $argv);
+   $opts = processArguments($argc, $argv);
 
 	if (isset($opts->help)) {
 		$console->log('must specify [--manual] [--log] [--timingMode] --TransformerName --inputFile /path/filename');
@@ -625,8 +599,8 @@ function runTests($argc, $argv) {
 	}
 
 	if (!isset($opts->inputFile)) {
-		$console->log('must specify [--manual] [--log] --TransformerName --inputFile /path/filename');
-		$console->log('type: "node bin/transformerTests.js --help" for more information');
+		$console->log("must specify [--manual] [--log] --TransformerName --inputFile /path/filename\n");
+		$console->log('Run "node bin/transformerTests.js --help" for more information'. "\n");
 		return;
 	}
 
@@ -668,12 +642,13 @@ function runTests($argc, $argv) {
 		var sh = new SanitizerHandler(manager, {});
 		selectTestType(argv, manager, sh);
 	} */
-	  else {
+	else {
 		$console->log('No valid TransformerName was specified');
 	}
 
 	$totalTime = microtime(true) - $startTime;
-	$console->log('Total transformer execution time = ' . $totalTime * 1000 . ' milliseconds');
+	$console->log('Total transformer execution time = ' . $totalTime * 1000 . " milliseconds\n");
+	$console->log('Total time processing tokens     = ' . $manager->tokenTime * 1000 . " milliseconds\n");
 }
 
 runTests($argc, $argv);

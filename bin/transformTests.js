@@ -68,6 +68,7 @@ function MockTTM(env, options) {
 	this.options = options;
 	this.defaultTransformers = [];	// any transforms
 	this.tokenTransformers   = {};	// non-any transforms
+	this.tokenTime = 0;
 }
 
 MockTTM.prototype.log = function() {
@@ -232,6 +233,7 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 					console.assert(defines[token.type] != undefined, "Incorrect type [" + token.type + "] specified in test file\n");
 					token.prototype = token.constructor = defines[token.type];
 				}
+				var s = Date.now();
 				var res = { token: token };
 				var ts = this.getTransforms(token, 2.0);
 				// Push the token through the transformations till it morphs
@@ -250,6 +252,7 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 					}
 					j++;
 				}
+				this.tokenTime += (Date.now() - s);
 				break;
 		}
 	}
@@ -350,6 +353,7 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 							console.assert(defines[token.type] != undefined, "Incorrect type [" + token.type + "] specified in test file\n");
 							token.prototype = token.constructor = defines[token.type];
 						}
+						var s = Date.now();
 						var ts = this.getTransforms(token, 2.0);
 						var res = { token: token };
 
@@ -367,6 +371,7 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 							}
 							j++;
 						}
+						this.tokenTime += (Date.now() - s);
 						break;
 				}
 			}
@@ -518,6 +523,7 @@ function runTests() {
 
 	var totalTime = Date.now() - startTime;
 	console.log('Total transformer execution time = ' + totalTime + ' milliseconds');
+	console.log('Total time processing tokens     = ' + manager.tokenTime + ' milliseconds');
 }
 
 runTests();
