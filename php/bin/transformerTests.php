@@ -315,7 +315,7 @@ class MockTTM {
 							case "SelfclosingTagTk":
 								$token = new SelfclosingTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
 								// HACK!
-								if ($jsTk['value']) {
+								if (isset($jsTk['value'])) {
 									$token->addAttribute("value", $jsTk['value']);
 								}
 								break;
@@ -494,7 +494,7 @@ class MockTTM {
 									case "SelfclosingTagTk":
 										$token = new SelfclosingTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
 										// HACK!
-										if ($jsTk['value']) {
+										if (isset($jsTk['value'])) {
 											$token->addAttribute("value", $jsTk['value']);
 										}
 										break;
