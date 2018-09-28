@@ -253,6 +253,9 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 					j++;
 				}
 				var diff = process.hrtime(s);
+				// NOTE: This is a bit of an overkill since no token transformer
+				// will take more than 1 second, but this is gauranteed correct
+				// in all scenarios.
 				this.tokenTime += (diff[0]*1e9 + diff[1]) / 1000000; // # milliseconds
 				break;
 		}
@@ -373,6 +376,9 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 							j++;
 						}
 						var diff = process.hrtime(s);
+						// NOTE: This is a bit of an overkill since no token transformer
+						// will take more than 1 second, but this is gauranteed correct
+						// in all scenarios.
 						this.tokenTime += (diff[0]*1e9 + diff[1]) / 1000000; // # milliseconds
 						break;
 				}
