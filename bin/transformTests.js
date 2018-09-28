@@ -68,7 +68,7 @@ function MockTTM(env, options) {
 	this.options = options;
 	this.defaultTransformers = [];	// any transforms
 	this.tokenTransformers   = {};	// non-any transforms
-	this.tokenTime = 0;
+	this.tokenTime = 0; // floating-point value (# ms)
 }
 
 MockTTM.prototype.log = function() {
@@ -252,7 +252,8 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 					}
 					j++;
 				}
-				this.tokenTime += process.hrtime(s)[1];
+				var diff = process.hrtime(s);
+				this.tokenTime += (diff[0]*1e9 + diff[1]) / 1000000; // # milliseconds
 				break;
 		}
 	}
@@ -371,7 +372,8 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 							}
 							j++;
 						}
-						this.tokenTime += process.hrtime(s)[1];
+						var diff = process.hrtime(s);
+						this.tokenTime += (diff[0]*1e9 + diff[1]) / 1000000; // # milliseconds
 						break;
 				}
 			}
@@ -523,7 +525,7 @@ function runTests() {
 
 	var totalTime = Date.now() - startTime;
 	console.log('Total transformer execution time = ' + totalTime + ' milliseconds');
-	console.log('Total time processing tokens     = ' + manager.tokenTime / 1000000 + ' milliseconds');
+	console.log('Total time processing tokens     = ' + manager.tokenTime + ' milliseconds');
 }
 
 runTests();
