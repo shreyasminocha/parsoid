@@ -230,10 +230,10 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 				}
 				var token = JSON.parse(line);
 				if (token.constructor !== String) {	// cast object to token type
-					console.assert(defines[token.type] != undefined, "Incorrect type [" + token.type + "] specified in test file\n");
+					console.assert(defines[token.type] !== undefined, "Incorrect type [" + token.type + "] specified in test file\n");
 					token.prototype = token.constructor = defines[token.type];
 				}
-				var s = Date.now();
+				var s = process.hrtime();
 				var res = { token: token };
 				var ts = this.getTransforms(token, 2.0);
 				// Push the token through the transformations till it morphs
@@ -252,7 +252,7 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 					}
 					j++;
 				}
-				this.tokenTime += (Date.now() - s);
+				this.tokenTime += process.hrtime(s)[1];
 				break;
 		}
 	}
@@ -350,10 +350,10 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 						}
 						var token = JSON.parse(line);
 						if (token.constructor !== String) {	// cast object to token type
-							console.assert(defines[token.type] != undefined, "Incorrect type [" + token.type + "] specified in test file\n");
+							console.assert(defines[token.type] !== undefined, "Incorrect type [" + token.type + "] specified in test file\n");
 							token.prototype = token.constructor = defines[token.type];
 						}
-						var s = Date.now();
+						var s = process.hrtime();
 						var ts = this.getTransforms(token, 2.0);
 						var res = { token: token };
 
@@ -371,7 +371,7 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 							}
 							j++;
 						}
-						this.tokenTime += (Date.now() - s);
+						this.tokenTime += process.hrtime(s)[1];
 						break;
 				}
 			}
@@ -523,7 +523,7 @@ function runTests() {
 
 	var totalTime = Date.now() - startTime;
 	console.log('Total transformer execution time = ' + totalTime + ' milliseconds');
-	console.log('Total time processing tokens     = ' + manager.tokenTime + ' milliseconds');
+	console.log('Total time processing tokens     = ' + manager.tokenTime / 1000000 + ' milliseconds');
 }
 
 runTests();
