@@ -169,6 +169,7 @@ class MockTTM {
 
 	public function addTransform($transformation, $debugName, $rank, $type, $name = null) {
 		global $console;
+		$this->pipeLineModified = true;
 
 		$t = makeMap([
 			[ 'rank', $rank ],
@@ -210,6 +211,7 @@ class MockTTM {
 	}
 
 	public function removeTransform($rank, $type, $name = null) {
+		$this->pipeLineModified = true;
 		if ($type === 'any') {
 			// Remove from default transformers
 			$this->removeMatchingTransform($this->defaultTransformers, $rank);
@@ -251,6 +253,7 @@ class MockTTM {
 		global $console;
 		global $cachedState;
 		global $cachedTestLines;
+		$numFailures = 0;
 
 		if (isset($commandLine->timingMode)) {
 			if ($cachedState == false) {
@@ -294,6 +297,7 @@ class MockTTM {
 								$console->log($testName . " ==> passed\n\n");
 							}
 						} else {
+							$numFailures++;
 							$console->log($testName . " ==> failed\n");
 							$console->log("line to debug => " . $line . "\n");
 							$console->log("result line ===> " . $stringResult . "\n");
@@ -343,8 +347,9 @@ class MockTTM {
 
 					// Push the token through the transformations till it morphs
 					$j = $ts['first'];
+					$this->pipelineModified = false;
 					$numTransforms = sizeof($ts['transforms']);
-					while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"])) {
+					while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"]) && !$this->pipelineModified) {
 						$transformer = $ts['transforms'][$j];
 						if ($transformerName === substr($transformer["name"], 0, strlen($transformerName))) {
 							// Transform the token.
@@ -361,6 +366,7 @@ class MockTTM {
 					break;
 			}
 		}
+		return $numFailures;
 	}
 
 // Because tokens are processed in pipelines which can execute out of
@@ -406,6 +412,7 @@ class MockTTM {
 		global $cachedTestLines;
 		global $cachedPipeLines;
 		global $cachedPipeLinesLength;
+		$numFailures = 0;
 
 		if (isset($commandLine->timingMode)) {
 			if ($cachedState == false) {
@@ -447,6 +454,7 @@ class MockTTM {
 									$console->log("line " . (($pipeLines[$index])[$element] + 1) . " ==> passed\n");
 								}
 							} else {
+								$numFailures++;
 								$console->log("line " . (($pipeLines[$index])[$element] + 1) . " ==> failed\n");
 								$console->log("line to debug => " . $line . "\n");
 								$console->log("result line ===> " . $stringResult . "\n");
@@ -495,8 +503,9 @@ class MockTTM {
 
 							// Push the token through the transformations till it morphs
 							$j = $ts['first'];
+							$this->pipelineModified = false;
 							$numTransforms = sizeof($ts['transforms']);
-							while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"])) {
+							while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"]) && !$this->pipelineModified) {
 								$transformer = $ts['transforms'][$j];
 								// Transform the token.
 								$res = $transformer["transform"]($token, $this, null);
@@ -514,6 +523,7 @@ class MockTTM {
 				}
 			}
 		}
+		return $numFailures;
 	}
 
 	public function unitTest($tokenTransformer, $commandLine) {
@@ -522,10 +532,11 @@ class MockTTM {
 		if(!isset($commandLine->timingMode)) {
 			$console->log("Starting stand alone unit test running file " . $commandLine->inputFile . "\n");
 		}
-		$tokenTransformer->manager->ProcessTestFile($commandLine);
+		$numFailures = $tokenTransformer->manager->ProcessTestFile($commandLine);
 		if(!isset($commandLine->timingMode)) {
 			$console->log("Ending stand alone unit test running file " . $commandLine->inputFile . "\n");
 		}
+		return $numFailures;
 	}
 
 	public function wikitextTest($tokenTransformer, $commandLine) {
@@ -534,25 +545,28 @@ class MockTTM {
 		if(!isset($commandLine->timingMode)) {
 			$console->log("Starting stand alone wikitext test running file " . $commandLine->inputFile . "\n");
 		}
-		$tokenTransformer->manager->ProcessWikitextFile($tokenTransformer, $commandLine);
+		$numFailures = $tokenTransformer->manager->ProcessWikitextFile($tokenTransformer, $commandLine);
 		if(!isset($commandLine->timingMode)) {
 			$console->log("Ending stand alone wikitext test running file " . $commandLine->inputFile . "\n");
 		}
+		return $numFailures;
 	}
 };
 
 function selectTestType($commandLine, $manager, $handler) {
 	$iterator = 1;
+	$numFailures = 0;
 	if(isset($commandLine->timingMode)) {
 		$iterator = 10000;
 	}
 	while ($iterator--) {
 		if (isset($commandLine->manual)) {
-			$manager->unitTest($handler, $commandLine);
+			$numFailures = $manager->unitTest($handler, $commandLine);
 		} else {
-			$manager->wikitextTest($handler, $commandLine);
+			$numFailures = $manager->wikitextTest($handler, $commandLine);
 		}
 	}
+	return $numFailures;
 }
 
 // processArguments handles a subset of javascript yargs like processing for command line
@@ -590,6 +604,7 @@ function processArguments($argc, $argv) {
 
 function runTests($argc, $argv) {
 	global $console;
+	$numFailures = 0;
 
    $opts = processArguments($argc, $argv);
 
@@ -620,7 +635,7 @@ function runTests($argc, $argv) {
 
 	if ($opts->QuoteTransformer) {
 		$qt = new Parsoid\Lib\Wt2html\TT\QuoteTransformer($manager, function () {});
-		selectTestType($opts, $manager, $qt);
+		$numFailures = selectTestType($opts, $manager, $qt);
 	}
 	/*
 	  else if ($opts->ListHandler) {
@@ -644,11 +659,16 @@ function runTests($argc, $argv) {
 	} */
 	else {
 		$console->log('No valid TransformerName was specified');
+		$numFailures++;
 	}
 
 	$totalTime = microtime(true) - $startTime;
 	$console->log('Total transformer execution time = ' . $totalTime * 1000 . " milliseconds\n");
 	$console->log('Total time processing tokens     = ' . $manager->tokenTime * 1000 . " milliseconds\n");
+	if ($numFailures) {
+		$console->log('Total failures: ' . $numFailures);
+		exit(1);
+	}
 }
 
 runTests($argc, $argv);
