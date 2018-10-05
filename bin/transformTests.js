@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /*
 Token transform unit test system
 
@@ -104,6 +105,7 @@ MockTTM.prototype._cmpTransformations = function(a, b) {
 };
 
 MockTTM.prototype.addTransform = function(transformation, debugName, rank, type, name) {
+	this.pipelineModified = true;
 
 	var t = {
 		rank: rank,
@@ -141,6 +143,7 @@ function removeMatchingTransform(transformers, rank) {
 }
 
 MockTTM.prototype.removeTransform = function(rank, type, name) {
+	this.pipelineModified = true;
 	if (type === 'any') {
 		// Remove from default transformers
 		removeMatchingTransform(this.defaultTransformers, rank);
@@ -216,6 +219,7 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 							console.log(testName + ' ==> passed\n');
 						}
 					} else {
+						numFailures++;
 						console.log(testName + ' ==> failed');
 						console.log('line to debug => ' + line);
 						console.log('result line ===> ' + stringResult + "\n");
@@ -225,29 +229,27 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 				break;
 			case '{':
 			default:
-				if (!result) {
-					result = { tokens: [] };
-				}
 				var token = JSON.parse(line);
 				if (token.constructor !== String) {	// cast object to token type
 					console.assert(defines[token.type] !== undefined, "Incorrect type [" + token.type + "] specified in test file\n");
 					token.prototype = token.constructor = defines[token.type];
 				}
 				var s = process.hrtime();
-				var res = { token: token };
+				var res;
 				var ts = this.getTransforms(token, 2.0);
+
 				// Push the token through the transformations till it morphs
 				var j = ts.first;
+				this.pipelineModified = false;
 				var numTransforms = ts.transforms.length;
-				while (j < numTransforms && (token === res.token)) {
+				while (j < numTransforms && !this.pipelineModified) {
 					var transformer = ts.transforms[j];
 					if (transformerName === transformer.name.substr(0, transformerName.length)) {
 						// Transform the token.
-						res = transformer.transform(token, this);
-						if (res.tokens) {
-							result.tokens = result.tokens.concat(res.tokens);
-						} else if (res.token && res.token !== token) {
-							result.tokens = result.tokens.concat(res.token);
+						result = res = transformer.transform(token, this);
+						var resT = res.tokens && !res.tokens.rank && res.tokens.length === 1 && res.tokens[0];
+						if (resT !== token) {
+							break;
 						}
 					}
 					j++;
@@ -260,6 +262,7 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 				break;
 		}
 	}
+	return numFailures;
 };
 
 // Because tokens are processed in pipelines which can execute out of
@@ -326,7 +329,7 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 		pipeLines = CreatePipelines(testLines);
 		pipeLinesLength = pipeLines.length;
 	}
-
+	var numFailures = 0;
 	for (var index = 0; index < pipeLinesLength; index++) {
 		if (pipeLines[index] !== undefined) {
 			tokenTransformer.manager.pipelineId = index;
@@ -341,6 +344,7 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 								console.log('line ' + ((pipeLines[index])[element] + 1) + ' ==> passed\n');
 							}
 						} else {
+							numFailures++;
 							console.log('line ' + ((pipeLines[index])[element] + 1) + ' ==> failed');
 							console.log('line to debug => ' + line);
 							console.log('result line ===> ' + stringResult + "\n");
@@ -349,29 +353,26 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 						break;
 					case '{':
 					default:
-						if (!result) {
-							result = { tokens: [] };
-						}
 						var token = JSON.parse(line);
 						if (token.constructor !== String) {	// cast object to token type
 							console.assert(defines[token.type] !== undefined, "Incorrect type [" + token.type + "] specified in test file\n");
 							token.prototype = token.constructor = defines[token.type];
 						}
 						var s = process.hrtime();
+						var res;
 						var ts = this.getTransforms(token, 2.0);
-						var res = { token: token };
 
 						// Push the token through the transformations till it morphs
 						var j = ts.first;
+						this.pipelineModified = false;
 						var numTransforms = ts.transforms.length;
-						while (j < numTransforms && (token === res.token)) {
+						while (j < numTransforms && !this.pipelineModified) {
 							var transformer = ts.transforms[j];
 							// Transform the token.
-							res = transformer.transform(token, this);
-							if (res.tokens) {
-								result.tokens = result.tokens.concat(res.tokens);
-							} else if (res.token && res.token !== token) {
-								result.tokens = result.tokens.concat(res.token);
+							result = res = transformer.transform(token, this);
+							var resT = res.tokens && !res.tokens.rank && res.tokens.length === 1 && res.tokens[0];
+							if (resT !== token) {
+								break;
 							}
 							j++;
 						}
@@ -385,6 +386,7 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 			}
 		}
 	}
+	return numFailures;
 };
 
 MockTTM.prototype.unitTest = function(tokenTransformer, commandLine) {
@@ -458,17 +460,19 @@ var opts = yargs.usage('Usage: $0 [options] --TransformerName --inputFile /path/
 });
 
 function selectTestType(commandLine, manager, handler) {
+	var numFailures = 0;
 	var iterator = 1;
 	if (commandLine.timingMode) {
 		iterator = 10000;
 	}
 	while (iterator--) {
 		if (commandLine.manual) {
-			manager.unitTest(handler, commandLine);
+			numFailures += manager.unitTest(handler, commandLine);
 		} else {
-			manager.wikitextTest(handler, commandLine);
+			numFailures += manager.wikitextTest(handler, commandLine);
 		}
 	}
+	return numFailures;
 }
 
 function runTests() {
@@ -503,35 +507,41 @@ function runTests() {
 	}
 
 	var startTime = Date.now();
+	var numFailures = 0;
 
 	if (argv.QuoteTransformer) {
 		var qt = new QuoteTransformer(manager, {});
-		selectTestType(argv, manager, qt);
+		numFailures = selectTestType(argv, manager, qt);
 	} else if (argv.ListHandler) {
 		var lh = new ListHandler(manager, {});
-		selectTestType(argv, manager, lh);
+		numFailures = selectTestType(argv, manager, lh);
 	} else if (argv.ParagraphWrapper) {
 		var pw = new ParagraphWrapper(manager, {});
-		selectTestType(argv, manager, pw);
+		numFailures = selectTestType(argv, manager, pw);
 	} else if (argv.PreHandler) {
 		var ph = new PreHandler(manager, {});
-		selectTestType(argv, manager, ph);
+		numFailures = selectTestType(argv, manager, ph);
 	} else if (argv.TokenStreamPatcher) {
 		var tsp = new TokenStreamPatcher(manager, {});
-		selectTestType(argv, manager, tsp);
+		numFailures = selectTestType(argv, manager, tsp);
 	} else if (argv.BehaviorSwitchHandler) {
 		var bsh = new BehaviorSwitchHandler(manager, {});
-		selectTestType(argv, manager, bsh);
+		numFailures = selectTestType(argv, manager, bsh);
 	} else if (argv.SanitizerHandler) {
 		var sh = new SanitizerHandler(manager, {});
-		selectTestType(argv, manager, sh);
+		numFailures = selectTestType(argv, manager, sh);
 	} else {
 		console.log("No valid TransformerName was specified");
+		numFailures++;
 	}
 
 	var totalTime = Date.now() - startTime;
 	console.log('Total transformer execution time = ' + totalTime + ' milliseconds');
 	console.log('Total time processing tokens     = ' + manager.tokenTime + ' milliseconds');
+	if (numFailures) {
+		console.log('Total failures:', numFailures);
+		process.exit(1);
+	}
 }
 
 runTests();
