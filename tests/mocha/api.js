@@ -24,7 +24,7 @@ parsoidOptions.linting = true;
 parsoidOptions.useWorker = true;
 parsoidOptions.cpu_workers = 1;
 
-var defaultContentVersion = '1.6.0';
+var defaultContentVersion = '2.0.0';
 
 // section wrappers are a distraction from the main business of
 // this file which is to verify functionality of API end points
@@ -179,7 +179,7 @@ describe('Parsoid API', function() {
 				'application/json; charset=utf-8; profile="https://www.mediawiki.org/wiki/Specs/data-parsoid/' + contentVersion + '"'
 			);
 			res.body['data-parsoid'].should.have.property('body');
-			if (semver.gte(contentVersion, '2.0.0')) {
+			if (semver.gte(contentVersion, '999.0.0')) {
 				res.body.should.have.property('data-mw');
 				res.body['data-mw'].should.have.property('headers');
 				res.body['data-mw'].headers.should.have.property('content-type');
@@ -253,12 +253,12 @@ describe('Parsoid API', function() {
 		});
 
 		it('should prefer higher quality (html)', function(done) {
-			var contentVersion = '2.0.0';
+			var contentVersion = '999.0.0';
 			request(api)
 			.post(mockDomain + '/v3/transform/wikitext/to/html/')
 			.set('Accept',
-				'text/html; profile="https://www.mediawiki.org/wiki/Specs/HTML/1.6.0"; q=0.5,' +
-				'text/html; profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"; q=0.8')
+				'text/html; profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"; q=0.5,' +
+				'text/html; profile="https://www.mediawiki.org/wiki/Specs/HTML/999.0.0"; q=0.8')
 			.send({ wikitext: '== h2 ==' })
 			.expect(200)
 			.expect(acceptableHtmlResponse(contentVersion))
@@ -266,12 +266,12 @@ describe('Parsoid API', function() {
 		});
 
 		it('should prefer higher quality (pagebundle)', function(done) {
-			var contentVersion = '2.0.0';
+			var contentVersion = '999.0.0';
 			request(api)
 			.post(mockDomain + '/v3/transform/wikitext/to/pagebundle/')
 			.set('Accept',
-				'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/1.6.0"; q=0.5,' +
-				'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/2.0.0"; q=0.8')
+				'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/2.0.0"; q=0.5,' +
+				'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/999.0.0"; q=0.8')
 			.send({ wikitext: '== h2 ==' })
 			.expect(200)
 			.expect(acceptablePageBundleResponse(contentVersion))
@@ -296,48 +296,24 @@ describe('Parsoid API', function() {
 			.end(done);
 		});
 
-		it('should accept requests for content version 1.2.x (html)', function(done) {
+		// Note the old profile used here is obsolete after 1.2.x
+		// TODO: Remove these tests when 1.x is no longer supported.
+
+		it('should not return content for requests for < 1.6.x because of sections (html)', function(done) {
 			request(api)
 			.post(mockDomain + '/v3/transform/wikitext/to/html/')
 			.set('Accept', 'text/html; profile="mediawiki.org/specs/html/1.2.1"')
 			.send({ wikitext: '{{echo|hi}}' })
-			.expect(200)
-			.expect(acceptableHtmlResponse('1.6.0'))
+			.expect(406)
 			.end(done);
 		});
 
-		it('should accept requests for content version 1.2.x (pagebundle)', function(done) {
+		it('should not return content for requests for < 1.6.x because of sections (pagebundle)', function(done) {
 			request(api)
 			.post(mockDomain + '/v3/transform/wikitext/to/pagebundle/')
 			.set('Accept', 'text/html; profile="mediawiki.org/specs/html/1.2.1"')
 			.send({ wikitext: '{{echo|hi}}' })
-			.expect(200)
-			.expect(acceptablePageBundleResponse('1.6.0'))
-			.end(done);
-		});
-
-		it('should accept requests for content version 1.x (html)', function(done) {
-			var contentVersion = '1.6.0';
-			request(api)
-			.post(mockDomain + '/v3/transform/wikitext/to/html/')
-			.set('Accept', 'text/html; profile="https://www.mediawiki.org/wiki/Specs/HTML/' + contentVersion + '"')
-			.send({ wikitext: '{{echo|hi}}' })
-			.expect(200)
-			.expect(acceptableHtmlResponse(contentVersion))
-			.end(done);
-		});
-
-		it('should accept requests for content version 1.x (pagebundle)', function(done) {
-			var contentVersion = '1.6.0';
-			request(api)
-			.post(mockDomain + '/v3/transform/wikitext/to/pagebundle/')
-			.set('Accept', 'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/' + contentVersion + '"')
-			.send({ wikitext: '{{echo|hi}}' })
-			.expect(200)
-			.expect(acceptablePageBundleResponse(contentVersion, function(html) {
-				// In 1.x, data-mw is still inline.
-				html.should.match(/\s+data-mw\s*=\s*['"]/);
-			}))
+			.expect(406)
 			.end(done);
 		});
 
@@ -360,7 +336,104 @@ describe('Parsoid API', function() {
 			.send({ wikitext: '{{echo|hi}}' })
 			.expect(200)
 			.expect(acceptablePageBundleResponse(contentVersion, function(html) {
-				// In 2.x, data-mw is in the pagebundle.
+				// In < 999.x, data-mw is still inline.
+				html.should.match(/\s+data-mw\s*=\s*['"]/);
+			}))
+			.end(done);
+		});
+
+		// Note that these tests aren't that useful directly after a major version bump
+
+		it('should accept requests for older content version 2.x (html)', function(done) {
+			var contentVersion = '2.0.0';
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/html/')
+			.set('Accept', 'text/html; profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"')  // Keep this on the older version
+			.send({ wikitext: '{{echo|hi}}' })
+			.expect(200)
+			.expect(acceptableHtmlResponse(contentVersion))
+			.end(done);
+		});
+
+		it('should accept requests for older content version 2.x (pagebundle)', function(done) {
+			var contentVersion = '2.0.0';
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/pagebundle/')
+			.set('Accept', 'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/2.0.0"')  // Keep this on the older version
+			.send({ wikitext: '{{echo|hi}}' })
+			.expect(200)
+			.expect(acceptablePageBundleResponse(contentVersion, function(html) {
+				// In < 999.x, data-mw is still inline.
+				html.should.match(/\s+data-mw\s*=\s*['"]/);
+			}))
+			.end(done);
+		});
+
+		it('should accept requests for old content version 1.8.x (html)', function(done) {
+			var contentVersion = '1.8.0';
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/html/')
+			.set('Accept', 'text/html; profile="https://www.mediawiki.org/wiki/Specs/HTML/' + contentVersion + '"')
+			.send({ wikitext: '[[File:Audio.oga]]' })
+			.expect(200)
+			.expect(acceptableHtmlResponse(contentVersion, function(html) {
+				var doc = domino.createDocument(html);
+				doc.querySelectorAll('audio').length.should.equal(0);
+				doc.querySelectorAll('video').length.should.equal(1);
+			}))
+			.end(done);
+		});
+
+		it('should accept requests for old content version 1.8.x (pagebundle)', function(done) {
+			var contentVersion = '1.8.0';
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/pagebundle/')
+			.set('Accept', 'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/' + contentVersion + '"')
+			.send({ wikitext: '[[File:Audio.oga]]' })
+			.expect(200)
+			.expect(acceptablePageBundleResponse(contentVersion, function(html) {
+				var doc = domino.createDocument(html);
+				doc.querySelectorAll('audio').length.should.equal(0);
+				doc.querySelectorAll('video').length.should.equal(1);
+			}))
+			.end(done);
+		});
+
+		it('should sanity check 2.x content (pagebundle)', function(done) {
+			var contentVersion = '2.0.0';
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/pagebundle/')
+			.set('Accept', 'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/' + contentVersion + '"')
+			.send({ wikitext: '[[File:Audio.oga]]' })
+			.expect(200)
+			.expect(acceptablePageBundleResponse(contentVersion, function(html) {
+				var doc = domino.createDocument(html);
+				doc.querySelectorAll('audio').length.should.equal(1);
+				doc.querySelectorAll('video').length.should.equal(0);
+			}))
+			.end(done);
+		});
+
+		it('should accept requests for content version 999.x (html)', function(done) {
+			var contentVersion = '999.0.0';
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/html/')
+			.set('Accept', 'text/html; profile="https://www.mediawiki.org/wiki/Specs/HTML/' + contentVersion + '"')
+			.send({ wikitext: '{{echo|hi}}' })
+			.expect(200)
+			.expect(acceptableHtmlResponse(contentVersion))
+			.end(done);
+		});
+
+		it('should accept requests for content version 999.x (pagebundle)', function(done) {
+			var contentVersion = '999.0.0';
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/pagebundle/')
+			.set('Accept', 'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/' + contentVersion + '"')
+			.send({ wikitext: '{{echo|hi}}' })
+			.expect(200)
+			.expect(acceptablePageBundleResponse(contentVersion, function(html) {
+				// In 999.x, data-mw is in the pagebundle.
 				html.should.not.match(/\s+data-mw\s*=\s*['"]/);
 			}))
 			.end(done);
@@ -417,8 +490,8 @@ describe('Parsoid API', function() {
 				'application/json; charset=utf-8; profile="https://www.mediawiki.org/wiki/Specs/data-parsoid/' + defaultContentVersion + '"'
 			);
 			res.body['data-parsoid'].should.have.property('body');
-			// TODO: Check data-mw when 2.x is the default.
-			console.assert(!semver.gte(defaultContentVersion, '2.0.0'));
+			// TODO: Check data-mw when 999.x is the default.
+			console.assert(!semver.gte(defaultContentVersion, '999.0.0'));
 			var doc = domino.createDocument(res.body.html.body);
 			if (expectFunc) {
 				return expectFunc(doc, res.body['data-parsoid'].body);
@@ -479,7 +552,7 @@ describe('Parsoid API', function() {
 			.expect(307)  // no revid or wikitext source provided
 			.expect(function(res) {
 				res.headers.should.have.property('location');
-				res.headers.location.should.equal('/' + mockDomain + '/v3/page/lint/Lint_Page/102');
+				res.headers.location.should.equal('/' + mockDomain + '/v3/transform/wikitext/to/lint/Lint_Page/102');
 			})
 			.end(done);
 		});
@@ -538,6 +611,16 @@ describe('Parsoid API', function() {
 			.expect(validHtmlResponse(function(doc) {
 				// SECTION -> P
 				doc.body.firstChild.firstChild.textContent.should.equal('MediaWiki has been successfully installed.');
+			}))
+			.end(done);
+		});
+
+		it('should get from a title and revision (html, pre-mcr)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/html/Old_Response/999')
+			.expect(validHtmlResponse(function(doc) {
+				// SECTION -> P
+				doc.body.firstChild.firstChild.textContent.should.equal('MediaWiki was successfully installed.');
 			}))
 			.end(done);
 		});
@@ -669,7 +752,7 @@ describe('Parsoid API', function() {
 			.expect(307)  // no revid or wikitext source provided
 			.expect(function(res) {
 				res.headers.should.have.property('location');
-				res.headers.location.should.equal('/' + mockDomain + '/v3/page/html/Main_Page/1');
+				res.headers.location.should.equal('/' + mockDomain + '/v3/transform/wikitext/to/html/Main_Page/1');
 			})
 			.end(done);
 		});
@@ -685,7 +768,7 @@ describe('Parsoid API', function() {
 			.expect(307)  // no revid or wikitext source provided
 			.expect(function(res) {
 				res.headers.should.have.property('location');
-				res.headers.location.should.equal('/' + mockDomain + '/v3/page/pagebundle/Main_Page/1');
+				res.headers.location.should.equal('/' + mockDomain + '/v3/transform/wikitext/to/pagebundle/Main_Page/1');
 			})
 			.end(done);
 		});
@@ -701,7 +784,7 @@ describe('Parsoid API', function() {
 			.expect(307)  // no revid or wikitext source provided
 			.expect(function(res) {
 				res.headers.should.have.property('location');
-				res.headers.location.should.equal('/' + mockDomain + '/v3/page/html/Lint_Page/102');
+				res.headers.location.should.equal('/' + mockDomain + '/v3/transform/wikitext/to/html/Lint_Page/102');
 			})
 			.end(done);
 		});
@@ -972,6 +1055,334 @@ describe('Parsoid API', function() {
 			.end(done);
 		});
 
+		// Variant conversion
+		it('should not perform unnecessary variant conversion for get of en page (html)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/html/Main_Page/1')
+			.set('Accept-Language', 'sr-el')
+			.expect(validHtmlResponse())
+			.expect('Content-Language', 'en')
+			.expect((res) => {
+				const vary = res.headers.vary || '';
+				vary.should.not.match(/\bAccept-Language\b/i);
+			})
+			.end(done);
+		});
+
+		it('should not perform unnecessary variant conversion for get of en page (pagebundle)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/pagebundle/Main_Page/1')
+			.set('Accept-Language', 'sr-el')
+			.expect(validPageBundleResponse())
+			.expect((res) => {
+				// HTTP headers should not be set.
+				const vary1 = res.headers.vary || '';
+				vary1.should.not.match(/\bAccept-Language\b/i);
+				const lang1 = res.headers['content-language'] || '';
+				lang1.should.equal('');
+				// But equivalent headers should be present in the JSON body.
+				const headers = res.body.html.headers;
+				const vary2 = headers.vary || '';
+				vary2.should.not.match(/\bAccept-Language\b/i);
+				const lang2 = headers['content-language'];
+				lang2.should.equal('en');
+			})
+			.end(done);
+		});
+
+		it('should not perform unnecessary variant conversion for get on page w/ magic word (html)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/html/No_Variant_Page/105')
+			.set('Accept-Language', 'sr-el')
+			.expect(validHtmlResponse((doc) => {
+				// No conversion done since __NOCONTENTCONVERT__ is set
+				doc.body.textContent.should.equal('абвг abcd\n');
+			}))
+			// But the vary/language headers are still set.
+			.expect('Content-Language', 'sr-el')
+			.expect('Vary', /\bAccept-Language\b/i)
+			.end(done);
+		});
+
+		it('should not perform unnecessary variant conversion for get on page w/ magic word (pagebundle)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/pagebundle/No_Variant_Page/105')
+			.set('Accept-Language', 'sr-el')
+			.expect(validPageBundleResponse((doc) => {
+				// No conversion done since __NOCONTENTCONVERT__ is set
+				doc.body.textContent.should.equal('абвг abcd\n');
+			}))
+			.expect((res) => {
+				// HTTP headers should not be set.
+				const vary1 = res.headers.vary || '';
+				vary1.should.not.match(/\bAccept-Language\b/i);
+				const lang1 = res.headers['content-language'] || '';
+				lang1.should.equal('');
+				// But vary/language headers should be set in JSON body.
+				const headers = res.body.html.headers;
+				const vary2 = headers.vary || '';
+				vary2.should.match(/\bAccept-Language\b/i);
+				const lang2 = headers['content-language'];
+				lang2.should.equal('sr-el');
+			})
+			.end(done);
+		});
+
+		it('should not perform unrequested variant conversion for get w/ no accept-language header (html)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/html/Variant_Page/104')
+			// no accept-language header sent
+			.expect('Content-Language', 'sr')
+			.expect('Vary', /\bAccept-Language\b/i)
+			.expect(validHtmlResponse((doc) => {
+				doc.body.textContent.should.equal('абвг abcd');
+			}))
+			.end(done);
+		});
+
+		it('should not perform unrequested variant conversion for get w/ no accept-language header (pagebundle)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/pagebundle/Variant_Page/104')
+			// no accept-language header sent
+			.expect(validPageBundleResponse((doc) => {
+				doc.body.textContent.should.equal('абвг abcd');
+			}))
+			.expect((res) => {
+				// HTTP headers should not be set.
+				const vary1 = res.headers.vary || '';
+				vary1.should.not.match(/\bAccept-Language\b/i);
+				const lang1 = res.headers['content-language'] || '';
+				lang1.should.equal('');
+				// But vary/language headers should be set in JSON body.
+				const headers = res.body.html.headers;
+				const vary2 = headers.vary || '';
+				vary2.should.match(/\bAccept-Language\b/i);
+				const lang2 = headers['content-language'];
+				lang2.should.equal('sr');
+			})
+			.end(done);
+		});
+
+		it('should not perform variant conversion for get w/ base variant specified (html)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/html/Variant_Page/104')
+			.set('Accept-Language', 'sr') // this is base variant
+			.expect('Content-Language', 'sr')
+			.expect('Vary', /\bAccept-Language\b/i)
+			.expect(validHtmlResponse((doc) => {
+				doc.body.textContent.should.equal('абвг abcd');
+			}))
+			.end(done);
+		});
+
+		it('should not perform variant conversion for get w/ base variant specified (pagebundle)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/pagebundle/Variant_Page/104')
+			.set('Accept-Language', 'sr') // this is base variant
+			.expect(validPageBundleResponse((doc) => {
+				doc.body.textContent.should.equal('абвг abcd');
+			}))
+			.expect((res) => {
+				// HTTP headers should not be set.
+				const vary1 = res.headers.vary || '';
+				vary1.should.not.match(/\bAccept-Language\b/i);
+				const lang1 = res.headers['content-language'] || '';
+				lang1.should.equal('');
+				// But vary/language headers should be set in JSON body.
+				const headers = res.body.html.headers;
+				const vary2 = headers.vary || '';
+				vary2.should.match(/\bAccept-Language\b/i);
+				const lang2 = headers['content-language'];
+				lang2.should.equal('sr');
+			})
+			.end(done);
+		});
+
+		it('should not perform variant conversion for get w/ invalid variant specified (html)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/html/Variant_Page/104')
+			.set('Accept-Language', 'sr-BOGUS') // this doesn't exist
+			.expect('Content-Language', 'sr')
+			.expect('Vary', /\bAccept-Language\b/i)
+			.expect(validHtmlResponse((doc) => {
+				doc.body.textContent.should.equal('абвг abcd');
+			}))
+			.end(done);
+		});
+
+		it('should not perform variant conversion for get w/ invalid variant specified (pagebundle)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/pagebundle/Variant_Page/104')
+			.set('Accept-Language', 'sr-BOGUS') // this doesn't exist
+			.expect(validPageBundleResponse((doc) => {
+				doc.body.textContent.should.equal('абвг abcd');
+			}))
+			.expect((res) => {
+				// HTTP headers should not be set.
+				const vary1 = res.headers.vary || '';
+				vary1.should.not.match(/\bAccept-Language\b/i);
+				const lang1 = res.headers['content-language'] || '';
+				lang1.should.equal('');
+				// But vary/language headers should be set in JSON body.
+				const headers = res.body.html.headers;
+				const vary2 = headers.vary || '';
+				vary2.should.match(/\bAccept-Language\b/i);
+				const lang2 = headers['content-language'];
+				lang2.should.equal('sr');
+			})
+			.end(done);
+		});
+
+		it('should perform variant conversion for get (html)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/html/Variant_Page/104')
+			.set('Accept-Language', 'sr-el')
+			.expect('Content-Language', 'sr-el')
+			.expect('Vary', /\bAccept-Language\b/i)
+			.expect(validHtmlResponse((doc) => {
+				doc.body.textContent.should.equal('abvg abcd');
+			}))
+			.end(done);
+		});
+
+		it('should perform variant conversion for get (pagebundle)', function(done) {
+			request(api)
+			.get(mockDomain + '/v3/page/pagebundle/Variant_Page/104')
+			.set('Accept-Language', 'sr-el')
+			.expect(validPageBundleResponse((doc) => {
+				doc.body.textContent.should.equal('abvg abcd');
+			}))
+			.expect((res) => {
+				const headers = res.body.html.headers;
+				headers.should.have.property('content-language');
+				headers.should.have.property('vary');
+				headers['content-language'].should.equal('sr-el');
+				headers.vary.should.match(/\bAccept-Language\b/i);
+			})
+			.end(done);
+		});
+
+		it('should perform variant conversion for transform given pagelanguage in HTTP header (html)', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/html/')
+			.set('Accept-Language', 'sr-el')
+			.set('Content-Language', 'sr')
+			.send({
+				wikitext: "абвг abcd x",
+			})
+			.expect('Content-Language', 'sr-el')
+			.expect('Vary', /\bAccept-Language\b/i)
+			.expect(validHtmlResponse((doc) => {
+				doc.body.textContent.should.equal('abvg abcd x');
+			}))
+			.end(done);
+		});
+
+		it('should perform variant conversion for transform given pagelanguage in HTTP header (pagebundle)', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/pagebundle/')
+			.set('Accept-Language', 'sr-el')
+			.set('Content-Language', 'sr')
+			.send({
+				wikitext: "абвг abcd x",
+			})
+			.expect(validPageBundleResponse((doc) => {
+				doc.body.textContent.should.equal('abvg abcd x');
+			}))
+			.expect((res) => {
+				const headers = res.body.html.headers;
+				headers.should.have.property('content-language');
+				headers.should.have.property('vary');
+				headers['content-language'].should.equal('sr-el');
+				headers.vary.should.match(/\bAccept-Language\b/i);
+			})
+			.end(done);
+		});
+
+		it('should perform variant conversion for transform given pagelanguage in JSON header (html)', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/html/')
+			.set('Accept-Language', 'sr-el')
+			.send({
+				wikitext: {
+					headers: {
+						'content-language': 'sr',
+					},
+					body: "абвг abcd x",
+				},
+			})
+			.expect('Content-Language', 'sr-el')
+			.expect('Vary', /\bAccept-Language\b/i)
+			.expect(validHtmlResponse((doc) => {
+				doc.body.textContent.should.equal('abvg abcd x');
+			}))
+			.end(done);
+		});
+
+		it('should perform variant conversion for transform given pagelanguage in JSON header (pagebundle)', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/pagebundle/')
+			.set('Accept-Language', 'sr-el')
+			.send({
+				wikitext: {
+					headers: {
+						'content-language': 'sr',
+					},
+					body: "абвг abcd",
+				},
+			})
+			.expect(validPageBundleResponse((doc) => {
+				doc.body.textContent.should.equal('abvg abcd');
+			}))
+			.expect((res) => {
+				const headers = res.body.html.headers;
+				headers.should.have.property('content-language');
+				headers.should.have.property('vary');
+				headers['content-language'].should.equal('sr-el');
+				headers.vary.should.match(/\bAccept-Language\b/i);
+			})
+			.end(done);
+		});
+
+		it('should perform variant conversion for transform given pagelanguage from oldid (html)', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/html/')
+			.set('Accept-Language', 'sr-el')
+			.send({
+				original: { revid: 104 },
+				wikitext: {
+					body: "абвг abcd x",
+				},
+			})
+			.expect('Content-Language', 'sr-el')
+			.expect('Vary', /\bAccept-Language\b/i)
+			.expect(validHtmlResponse((doc) => {
+				doc.body.textContent.should.equal('abvg abcd x');
+			}))
+			.end(done);
+		});
+
+		it('should perform variant conversion for transform given pagelanguage from oldid (pagebundle)', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/wikitext/to/pagebundle/')
+			.set('Accept-Language', 'sr-el')
+			.send({
+				original: { revid: 104 },
+				wikitext: "абвг abcd",
+			})
+			.expect(validPageBundleResponse((doc) => {
+				doc.body.textContent.should.equal('abvg abcd');
+			}))
+			.expect((res) => {
+				const headers = res.body.html.headers;
+				headers.should.have.property('content-language');
+				headers.should.have.property('vary');
+				headers['content-language'].should.equal('sr-el');
+				headers.vary.should.match(/\bAccept-Language\b/i);
+			})
+			.end(done);
+		});
+
 	}); // end wt2html
 
 	describe("html2wt", function() {
@@ -1098,7 +1509,7 @@ describe('Parsoid API', function() {
 					},
 					"data-parsoid": {
 						headers: {
-							'content-type': 'application/json;profile="https://www.mediawiki.org/wiki/Specs/data-parsoid/1.6.0"',
+							'content-type': 'application/json;profile="https://www.mediawiki.org/wiki/Specs/data-parsoid/' + defaultContentVersion + '"',
 						},
 						body: {
 							"counter": 14,
@@ -1121,7 +1532,7 @@ describe('Parsoid API', function() {
 				original: {
 					html: {
 						headers: {
-							// content-type is omitted to ensure we got it from the mw:html:version meta
+							'content-type': 'text/html; profile="mediawiki.org/specs/html/1.1.1"',
 						},
 						body: "<!DOCTYPE html>\n<html prefix=\"dc: http://purl.org/dc/terms/ mw: http://mediawiki.org/rdf/\" about=\"http://localhost/index.php/Special:Redirect/revision/1\"><head prefix=\"mwr: http://localhost/index.php/Special:Redirect/\"><meta property=\"mw:articleNamespace\" content=\"0\"/><link rel=\"dc:replaces\" resource=\"mwr:revision/0\"/><meta property=\"dc:modified\" content=\"2014-09-12T22:46:59.000Z\"/><meta about=\"mwr:user/0\" property=\"dc:title\" content=\"MediaWiki default\"/><link rel=\"dc:contributor\" resource=\"mwr:user/0\"/><meta property=\"mw:revisionSHA1\" content=\"8e0aa2f2a7829587801db67d0424d9b447e09867\"/><meta property=\"dc:description\" content=\"\"/><link rel=\"dc:isVersionOf\" href=\"http://localhost/index.php/Main_Page\"/><title>Main_Page</title><base href=\"http://localhost/index.php/\"/><link rel=\"stylesheet\" href=\"//localhost/load.php?modules=mediawiki.legacy.commonPrint,shared|mediawiki.skinning.elements|mediawiki.skinning.content|mediawiki.skinning.interface|skins.vector.styles|site|mediawiki.skinning.content.parsoid&amp;only=styles&amp;debug=true&amp;skin=vector\"/></head><body id=\"mwAA\" lang=\"en\" class=\"mw-content-ltr sitedir-ltr ltr mw-body mw-body-content mediawiki\" dir=\"ltr\"><p id=\"mwAQ\"><strong id=\"mwAg\">MediaWiki has been successfully installed.</strong></p>\n\n<p id=\"mwAw\">Consult the <a rel=\"mw:ExtLink\" href=\"//meta.wikimedia.org/wiki/Help:Contents\" id=\"mwBA\">User's Guide</a> for information on using the wiki software.</p>\n\n<h2 id=\"mwBQ\"> Getting started </h2>\n<ul id=\"mwBg\"><li id=\"mwBw\"> <a rel=\"mw:ExtLink\" href=\"//www.mediawiki.org/wiki/Special:MyLanguage/Manual:Configuration_settings\" id=\"mwCA\">Configuration settings list</a></li>\n<li id=\"mwCQ\"> <a rel=\"mw:ExtLink\" href=\"//www.mediawiki.org/wiki/Special:MyLanguage/Manual:FAQ\" id=\"mwCg\">MediaWiki FAQ</a></li>\n<li id=\"mwCw\"> <a rel=\"mw:ExtLink\" href=\"https://lists.wikimedia.org/mailman/listinfo/mediawiki-announce\" id=\"mwDA\">MediaWiki release mailing list</a></li>\n<li id=\"mwDQ\"> <a rel=\"mw:ExtLink\" href=\"//www.mediawiki.org/wiki/Special:MyLanguage/Localisation#Translation_resources\" id=\"mwDg\">Localise MediaWiki for your language</a></li></ul></body></html>",
 					},
@@ -1361,7 +1772,7 @@ describe('Parsoid API', function() {
 			.end(done);
 		});
 
-		it('should return a 400 for missing inline data-mw (1.x)', function(done) {
+		it('should return a 400 for missing inline data-mw (2.x)', function(done) {
 			request(api)
 			.post(mockDomain + '/v3/transform/pagebundle/to/wikitext/')
 			.send({
@@ -1375,7 +1786,7 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/1.6.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
 						},
 						body: '<p about="#mwt1" typeof="mw:Transclusion" id="mwAQ">ho</p>',
 					},
@@ -1399,7 +1810,7 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/999.0.0"',
 						},
 						body: '<p about="#mwt1" typeof="mw:Transclusion" id="mwAQ">ho</p>',
 					},
@@ -1428,7 +1839,7 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/999.0.0"',
 						},
 						body: '<p about="#mwt1" typeof="mw:Transclusion" id="mwAQ">ho</p>',
 					},
@@ -1458,7 +1869,7 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/999.0.0"',
 						},
 						body: '<p about="#mwt1" typeof="mw:Transclusion" id="mwAQ">ho</p>',
 					},
@@ -1487,7 +1898,7 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/999.0.0"',
 						},
 						body: '<p about="#mwt1" typeof="mw:Transclusion" id="mwAQ">ho</p>',
 					},
@@ -1521,7 +1932,7 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/999.0.0"',
 						},
 						body: '<p about="#mwt1" typeof="mw:Transclusion" id="mwAQ">ho</p>',
 					},
@@ -1563,7 +1974,7 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/999.0.0"',
 						},
 						body: '<p><span class="mw-default-size" typeof="mw:Image" id="mwAg"><a href="./File:Foobar.jpg" id="mwAw"><img resource="./File:Foobar.jpg" src="//upload.wikimedia.org/wikipedia/commons/3/3a/Foobar.jpg" data-file-width="240" data-file-height="28" data-file-type="bitmap" height="28" width="240" id="mwBA"/></a></span></p>',
 					},
@@ -1605,7 +2016,7 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/999.0.0"',
 						},
 						body: '<p><span class="mw-default-size" typeof="mw:Image" id="mwAg"><a href="./File:Foobar.jpg" id="mwAw"><img resource="./File:Foobar.jpg" src="//upload.wikimedia.org/wikipedia/commons/3/3a/Foobar.jpg" data-file-width="240" data-file-height="28" data-file-type="bitmap" height="28" width="240" id="mwBA"/></a></span></p>',
 					},
@@ -1647,7 +2058,7 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/999.0.0"',
 						},
 						body: '<p><span class="mw-default-size" typeof="mw:Image" id="mwAg"><a href="./File:Foobar.jpg" id="mwAw"><img resource="./File:Foobar.jpg" src="//upload.wikimedia.org/wikipedia/commons/3/3a/Foobar.jpg" data-file-width="240" data-file-height="28" data-file-type="bitmap" height="28" width="240" id="mwBA"/></a></span></p>',
 					},
@@ -1708,6 +2119,63 @@ describe('Parsoid API', function() {
 				html: "a".repeat(parsoidOptions.limits.html2wt.maxHTMLSize + 1),
 			})
 			.expect(413)
+			.end(done);
+		});
+
+		// T202666
+		it('should downgrade the original version before attempting to serialize', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/pagebundle/to/wikitext/')
+			.send({
+				html: '<!DOCTYPE html>\n<html><head><meta charset="utf-8"/><meta property="mw:html:version" content="1.8.0"/></head><body id="mwAA" lang="en" class="mw-content-ltr sitedir-ltr ltr mw-body-content parsoid-body mediawiki mw-parser-output" dir="ltr"><p id="mwAQ"><figure-inline class="mw-default-size mw-default-audio-height" typeof="mw:Audio" id="mwAg"><span id="mwAw"><video controls="" preload="none" height="32" width="220" resource="./File:Mozart_Symphony_36_KV_425_Linz_4.oga" id="mwBA"><source src="https://upload.wikimedia.org/wikipedia/commons/c/ca/Mozart_Symphony_36_KV_425_Linz_4.oga" type=\'audio/ogg; codecs="vorbis"\' data-title="Original Ogg file (251 kbps)" data-shorttitle="Ogg source" id="mwBQ"/><source src="https://upload.wikimedia.org/wikipedia/commons/transcoded/c/ca/Mozart_Symphony_36_KV_425_Linz_4.oga/Mozart_Symphony_36_KV_425_Linz_4.oga.mp3" type="audio/mpeg" data-title="MP3" data-shorttitle="MP3" id="mwBg"/></video></span></figure-inline></p></body></html>',
+				original: {
+					title: 'Doesnotexist',
+					revid: 6789,  // Necessary for selser
+					wikitext: {
+						body: "[[File:Selser was used.oga]]",
+					},
+					'data-parsoid': {
+						body: {
+							"ids": {
+								"mwAA": { "dsr": [0,47,0,0] },
+								"mwAQ": { "dsr": [0,45,0,0] },
+								"mwAg": { "optList": [], "dsr": [0,45,null,null] },
+								"mwAw": {},
+								"mwBA": { "a": { "height": "32", "width": "220", "resource": "./File:Mozart_Symphony_36_KV_425_Linz_4.oga" }, "sa": { "resource": "File:Selser was not used.oga" } },
+								"mwBQ": {},
+								"mwBg": {}
+							}
+						},
+					},
+					html: {
+						headers: {
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+						},
+						body: '<!DOCTYPE html>\n<html><head><meta charset="utf-8"/><meta property="mw:html:version" content="2.0.0"/></head><body id="mwAA" lang="en" class="mw-content-ltr sitedir-ltr ltr mw-body-content parsoid-body mediawiki mw-parser-output" dir="ltr"><p id="mwAQ"><figure-inline class="mw-default-size mw-default-audio-height" typeof="mw:Audio" id="mwAg"><span id="mwAw"><audio controls="" preload="none" height="32" width="220" resource="./File:Mozart_Symphony_36_KV_425_Linz_4.oga" id="mwBA"><source src="https://upload.wikimedia.org/wikipedia/commons/c/ca/Mozart_Symphony_36_KV_425_Linz_4.oga" type=\'audio/ogg; codecs="vorbis"\' data-title="Original Ogg file (251 kbps)" data-shorttitle="Ogg source" id="mwBQ"/><source src="https://upload.wikimedia.org/wikipedia/commons/transcoded/c/ca/Mozart_Symphony_36_KV_425_Linz_4.oga/Mozart_Symphony_36_KV_425_Linz_4.oga.mp3" type="audio/mpeg" data-title="MP3" data-shorttitle="MP3" id="mwBg"/></audio></span></figure-inline></p></body></html>',
+					},
+				},
+			})
+			.expect(validWikitextResponse('[[File:Selser was used.oga]]'))
+			.end(done);
+		});
+
+		it('should fail to downgrade the original version for an unknown transition', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/pagebundle/to/wikitext/')
+			.send({
+				html: '<!DOCTYPE html>\n<html><head><meta charset="utf-8"/><meta property="mw:html:version" content="1.8.0"/></head><body id="mwAA" lang="en" class="mw-content-ltr sitedir-ltr ltr mw-body-content parsoid-body mediawiki mw-parser-output" dir="ltr">123</body></html>',
+				original: {
+					title: 'Doesnotexist',
+					'data-parsoid': { body: { "ids": {} } },
+					html: {
+						headers: {
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2222.0.0"',
+						},
+						body: '<!DOCTYPE html>\n<html><head><meta charset="utf-8"/><meta property="mw:html:version" content="2.0.0"/></head><body id="mwAA" lang="en" class="mw-content-ltr sitedir-ltr ltr mw-body-content parsoid-body mediawiki mw-parser-output" dir="ltr">123</body></html>',
+					},
+				},
+			})
+			.expect(400)
 			.end(done);
 		});
 
@@ -1774,11 +2242,11 @@ describe('Parsoid API', function() {
 			.end(done);
 		});
 
-		it('should refuse an unknown conversion (1.x -> 2.x)', function(done) {
-			previousRevHTML.html.headers['content-type'].should.equal('text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/1.6.0"');
+		it('should refuse an unknown conversion (2.x -> 999.x)', function(done) {
+			previousRevHTML.html.headers['content-type'].should.equal('text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"');
 			request(api)
 			.post(mockDomain + '/v3/transform/pagebundle/to/pagebundle/Reuse_Page/100')
-			.set('Accept', 'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/2.0.0"')
+			.set('Accept', 'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/999.0.0"')
 			.send({
 				previous: previousRevHTML,
 			})
@@ -1786,8 +2254,8 @@ describe('Parsoid API', function() {
 			.end(done);
 		});
 
-		it('should downgrade 2.x content to 1.x', function(done) {
-			var contentVersion = '1.6.0';
+		it('should downgrade 999.x content to 2.x', function(done) {
+			var contentVersion = '2.0.0';
 			request(api)
 			.post(mockDomain + '/v3/transform/pagebundle/to/pagebundle/')
 			.set('Accept', 'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/' + contentVersion + '"')
@@ -1806,22 +2274,68 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/999.0.0"',
 						},
-						body: '<p about="#mwt1" typeof="mw:Transclusion" id="mwAQ">ho</p>',
+						body: '<!DOCTYPE html>\n<html><head><meta charset="utf-8"/><meta property="mw:html:version" content="999.0.0"/></head><body><p about="#mwt1" typeof="mw:Transclusion" id="mwAQ">ho</p></body></html>',
 					},
 				},
 			})
 			.expect(200)
 			.expect(acceptablePageBundleResponse(contentVersion, function(html) {
-				// In 1.x, data-mw is still inline.
+				// In < 999.x, data-mw is still inline.
 				html.should.match(/\s+data-mw\s*=\s*['"]/);
 				html.should.not.match(/\s+data-parsoid\s*=\s*['"]/);
+				var doc = domino.createDocument(html);
+				var meta = doc.querySelector('meta[property="mw:html:version"]');
+				meta.getAttribute('content').should.equal(contentVersion);
+			}))
+			.end(done);
+		});
+
+		it('should downgrade 2.x content to 1.8.x', function(done) {
+			var contentVersion = '1.8.0';
+			request(api)
+			.post(mockDomain + '/v3/transform/pagebundle/to/pagebundle/')
+			.set('Accept', 'application/json; profile="https://www.mediawiki.org/wiki/Specs/pagebundle/' + contentVersion + '"')
+			.send({
+				original: {
+					title: 'Doesnotexist',
+					'data-parsoid': {
+						body: {
+							"ids": {
+								"mwAA": { "dsr": [0,47,0,0] },
+								"mwAQ": { "dsr": [0,45,0,0] },
+								"mwAg": { "optList": [], "dsr": [0,45,null,null] },
+								"mwAw": {},
+								"mwBA": { "a": { "height": "32", "width": "220", "resource": "./File:Mozart_Symphony_36_KV_425_Linz_4.oga" }, "sa": { "resource": "File:Mozart Symphony 36 KV 425 Linz 4.oga" } },
+								"mwBQ": {},
+								"mwBg": {}
+							}
+						},
+					},
+					html: {
+						headers: {
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/2.0.0"',
+						},
+						body: '<!DOCTYPE html>\n<html><head><meta charset="utf-8"/><meta property="mw:html:version" content="2.0.0"/></head><body id="mwAA" lang="en" class="mw-content-ltr sitedir-ltr ltr mw-body-content parsoid-body mediawiki mw-parser-output" dir="ltr"><p id="mwAQ"><figure-inline class="mw-default-size mw-default-audio-height" typeof="mw:Audio" id="mwAg"><span id="mwAw"><audio controls="" preload="none" height="32" width="220" resource="./File:Mozart_Symphony_36_KV_425_Linz_4.oga" id="mwBA"><source src="https://upload.wikimedia.org/wikipedia/commons/c/ca/Mozart_Symphony_36_KV_425_Linz_4.oga" type=\'audio/ogg; codecs="vorbis"\' data-title="Original Ogg file (251 kbps)" data-shorttitle="Ogg source" id="mwBQ"/><source src="https://upload.wikimedia.org/wikipedia/commons/transcoded/c/ca/Mozart_Symphony_36_KV_425_Linz_4.oga/Mozart_Symphony_36_KV_425_Linz_4.oga.mp3" type="audio/mpeg" data-title="MP3" data-shorttitle="MP3" id="mwBg"/></audio></span></figure-inline></p></body></html>',
+					},
+				},
+			})
+			.expect(200)
+			.expect(acceptablePageBundleResponse(contentVersion, function(html) {
+				var doc = domino.createDocument(html);
+				var meta = doc.querySelector('meta[property="mw:html:version"]');
+				meta.getAttribute('content').should.equal(contentVersion);
+				doc.querySelectorAll('audio').length.should.equal(0);
+				doc.querySelectorAll('video').length.should.equal(1);
 			}))
 			.end(done);
 		});
 
 		it('should accept the original and update the redlinks', function(done) {
+			// Keep this on an older version to show that it's preserved
+			// through the transformation.
+			var contentVersion = '1.7.0';
 			request(api)
 			.post(mockDomain + '/v3/transform/pagebundle/to/pagebundle/')
 			.send({
@@ -1837,13 +2351,14 @@ describe('Parsoid API', function() {
 					},
 					html: {
 						headers: {
-							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/1.4.0"',
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/' + contentVersion + '"',
 						},
 						body: '<p><a rel="mw:WikiLink" href="./Special:Version" title="Special:Version">Special:Version</a> <a rel="mw:WikiLink" href="./Doesnotexist" title="Doesnotexist">Doesnotexist</a> <a rel="mw:WikiLink" href="./Redirected" title="Redirected">Redirected</a></p>',
 					},
 				},
 			})
-			.expect(validPageBundleResponse(function(doc) {
+			.expect(acceptablePageBundleResponse(contentVersion, function(html) {
+				var doc = domino.createDocument(html);
 				doc.body.querySelectorAll('a').length.should.equal(3);
 				var redLinks = doc.body.querySelectorAll('.new');
 				redLinks.length.should.equal(1);
@@ -1852,6 +2367,137 @@ describe('Parsoid API', function() {
 				redirects.length.should.equal(1);
 				redirects[0].getAttribute('title').should.equal('Redirected');
 			}))
+			.end(done);
+		});
+
+		it('should refuse variant conversion on en page', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/pagebundle/to/pagebundle/')
+			.send({
+				updates: {
+					variant: { target: 'sr-el' },
+				},
+				original: {
+					revid: 1,
+					html: {
+						headers: {
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/' + defaultContentVersion + '"',
+						},
+						body: '<p>абвг abcd</p>',
+					},
+				},
+			})
+			.expect(400)
+			.end(done);
+		});
+
+		it('should accept the original and do variant conversion (given oldid)', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/pagebundle/to/pagebundle/')
+			.send({
+				updates: {
+					variant: { target: 'sr-el' },
+				},
+				original: {
+					revid: 104, /* sets the pagelanguage */
+					html: {
+						headers: {
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/' + defaultContentVersion + '"',
+						},
+						body: '<p>абвг abcd x</p>',
+					},
+				},
+			})
+			.expect((res) => {
+				// We don't actually require the result to have data-parsoid
+				// if the input didn't have data-parsoid; hack the result
+				// in order to make validPageBundleResponse() pass.
+				res.body['data-parsoid'].body = {};
+			})
+			.expect(validPageBundleResponse(function(doc) {
+				doc.body.textContent.should.equal('abvg abcd x');
+			}))
+			.expect((res) => {
+				const headers = res.body.html.headers;
+				headers.should.have.property('content-language');
+				headers['content-language'].should.equal('sr-el');
+				headers.should.have.property('vary');
+				headers.vary.should.match(/\bAccept-Language\b/i);
+			})
+			.end(done);
+		});
+
+		it('should accept the original and do variant conversion (given pagelanguage)', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/pagebundle/to/pagebundle/')
+			.set('Content-Language', 'sr')
+			.set('Accept-Language', 'sr-el')
+			.send({
+				updates: {
+					variant: { /* target implicit from accept-language */ },
+				},
+				original: {
+					html: {
+						headers: {
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/' + defaultContentVersion + '"',
+						},
+						body: '<p>абвг abcd</p>',
+					},
+				},
+			})
+			.expect((res) => {
+				// We don't actually require the result to have data-parsoid
+				// if the input didn't have data-parsoid; hack the result
+				// in order to make validPageBundleResponse() pass.
+				res.body['data-parsoid'].body = {};
+			})
+			.expect(validPageBundleResponse(function(doc) {
+				doc.body.textContent.should.equal('abvg abcd');
+			}))
+			.expect((res) => {
+				const headers = res.body.html.headers;
+				headers.should.have.property('content-language');
+				headers['content-language'].should.equal('sr-el');
+				headers.should.have.property('vary');
+				headers.vary.should.match(/\bAccept-Language\b/i);
+			})
+			.end(done);
+		});
+
+		it('should not perform variant conversion w/ invalid variant (given pagelanguage)', function(done) {
+			request(api)
+			.post(mockDomain + '/v3/transform/pagebundle/to/pagebundle/')
+			.set('Content-Language', 'sr')
+			.set('Accept-Language', 'sr-BOGUS')
+			.send({
+				updates: {
+					variant: { /* target implicit from accept-language */ },
+				},
+				original: {
+					html: {
+						headers: {
+							'content-type': 'text/html;profile="https://www.mediawiki.org/wiki/Specs/HTML/' + defaultContentVersion + '"',
+						},
+						body: '<p>абвг abcd</p>',
+					},
+				},
+			})
+			.expect((res) => {
+				// We don't actually require the result to have data-parsoid
+				// if the input didn't have data-parsoid; hack the result
+				// in order to make validPageBundleResponse() pass.
+				res.body['data-parsoid'].body = {};
+			})
+			.expect(validPageBundleResponse(function(doc) {
+				doc.body.textContent.should.equal('абвг abcd');
+			}))
+			.expect((res) => {
+				const headers = res.body.html.headers;
+				headers.should.have.property('content-language');
+				headers['content-language'].should.equal('sr');
+				headers.should.have.property('vary');
+				headers.vary.should.match(/\bAccept-Language\b/i);
+			})
 			.end(done);
 		});
 

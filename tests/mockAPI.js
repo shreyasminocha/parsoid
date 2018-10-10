@@ -88,9 +88,35 @@ var mainPage = {
 					{
 						revid: 1,
 						parentid: 0,
+						slots: {
+							main: {
+								contentmodel: 'wikitext',
+								contentformat: 'text/x-wiki',
+								'*': '<strong>MediaWiki has been successfully installed.</strong>\n\nConsult the [//meta.wikimedia.org/wiki/Help:Contents User\'s Guide] for information on using the wiki software.\n\n== Getting started ==\n* [//www.mediawiki.org/wiki/Special:MyLanguage/Manual:Configuration_settings Configuration settings list]\n* [//www.mediawiki.org/wiki/Special:MyLanguage/Manual:FAQ MediaWiki FAQ]\n* [https://lists.wikimedia.org/mailman/listinfo/mediawiki-announce MediaWiki release mailing list]\n* [//www.mediawiki.org/wiki/Special:MyLanguage/Localisation#Translation_resources Localise MediaWiki for your language]',
+							},
+						},
+					},
+				],
+			},
+		},
+	},
+};
+
+// Old response structure, pre-mcr
+var oldResponse = {
+	query: {
+		pages: {
+			'999': {
+				pageid: 999,
+				ns: 0,
+				title: 'Old Response',
+				revisions: [
+					{
+						revid: 999,
+						parentid: 0,
 						contentmodel: 'wikitext',
 						contentformat: 'text/x-wiki',
-						'*': '<strong>MediaWiki has been successfully installed.</strong>\n\nConsult the [//meta.wikimedia.org/wiki/Help:Contents User\'s Guide] for information on using the wiki software.\n\n== Getting started ==\n* [//www.mediawiki.org/wiki/Special:MyLanguage/Manual:Configuration_settings Configuration settings list]\n* [//www.mediawiki.org/wiki/Special:MyLanguage/Manual:FAQ MediaWiki FAQ]\n* [https://lists.wikimedia.org/mailman/listinfo/mediawiki-announce MediaWiki release mailing list]\n* [//www.mediawiki.org/wiki/Special:MyLanguage/Localisation#Translation_resources Localise MediaWiki for your language]',
+						'*': '<strong>MediaWiki was successfully installed.</strong>\n\nConsult the [//meta.wikimedia.org/wiki/Help:Contents User\'s Guide] for information on using the wiki software.\n\n== Getting started ==\n* [//www.mediawiki.org/wiki/Special:MyLanguage/Manual:Configuration_settings Configuration settings list]\n* [//www.mediawiki.org/wiki/Special:MyLanguage/Manual:FAQ MediaWiki FAQ]\n* [https://lists.wikimedia.org/mailman/listinfo/mediawiki-announce MediaWiki release mailing list]\n* [//www.mediawiki.org/wiki/Special:MyLanguage/Localisation#Translation_resources Localise MediaWiki for your language]',
 					},
 				],
 			},
@@ -109,9 +135,13 @@ var junkPage = {
 					{
 						revid: 2,
 						parentid: 0,
-						contentmodel: 'wikitext',
-						contentformat: 'text/x-wiki',
-						'*': '2. This is just some junk. See the comment above.',
+						slots: {
+							main: {
+								contentmodel: 'wikitext',
+								contentformat: 'text/x-wiki',
+								'*': '2. This is just some junk. See the comment above.',
+							},
+						},
 					},
 				],
 			},
@@ -130,9 +160,13 @@ var largePage = {
 					{
 						revid: 3,
 						parentid: 0,
-						contentmodel: 'wikitext',
-						contentformat: 'text/x-wiki',
-						'*': 'a'.repeat(parsoidOptions.limits.wt2html.maxWikitextSize + 1),
+						slots: {
+							main: {
+								contentmodel: 'wikitext',
+								contentformat: 'text/x-wiki',
+								'*': 'a'.repeat(parsoidOptions.limits.wt2html.maxWikitextSize + 1),
+							},
+						},
 					},
 				],
 			},
@@ -151,9 +185,13 @@ var reusePage = {
 					{
 						revid: 100,
 						parentid: 0,
-						contentmodel: 'wikitext',
-						contentformat: 'text/x-wiki',
-						'*': '{{colours of the rainbow}}',
+						slots: {
+							main: {
+								contentmodel: 'wikitext',
+								contentformat: 'text/x-wiki',
+								'*': '{{colours of the rainbow}}',
+							},
+						},
 					},
 				],
 			},
@@ -172,9 +210,13 @@ var jsonPage = {
 					{
 						revid: 101,
 						parentid: 0,
-						contentmodel: 'json',
-						contentformat: 'text/json',
-						'*': '[1]',
+						slots: {
+							main: {
+								contentmodel: 'json',
+								contentformat: 'text/json',
+								'*': '[1]',
+							},
+						},
 					},
 				],
 			},
@@ -193,9 +235,13 @@ var lintPage = {
 					{
 						revid: 102,
 						parentid: 0,
-						contentmodel: 'wikitext',
-						contentformat: 'text/x-wiki',
-						'*': '{|\nhi\n|ho\n|}',
+						slots: {
+							main: {
+								contentmodel: 'wikitext',
+								contentformat: 'text/x-wiki',
+								'*': '{|\nhi\n|ho\n|}',
+							},
+						},
 					},
 				],
 			},
@@ -214,11 +260,69 @@ var redlinksPage = {
 					{
 						revid: 103,
 						parentid: 0,
-						contentmodel: 'wikitext',
-						contentformat: 'text/x-wiki',
-						'*': '[[Special:Version]] [[Doesnotexist]] [[Redirected]]',
+						slots: {
+							main: {
+								contentmodel: 'wikitext',
+								contentformat: 'text/x-wiki',
+								'*': '[[Special:Version]] [[Doesnotexist]] [[Redirected]]',
+							},
+						},
 					},
 				],
+			},
+		},
+	},
+};
+
+var variantPage = {
+	query: {
+		pages: {
+			'104': {
+				pageid: 104,
+				ns: 0,
+				title: "Variant Page",
+				revisions: [
+					{
+						revid: 104,
+						parentid: 0,
+						slots: {
+							main: {
+								contentmodel: 'wikitext',
+								contentformat: 'text/x-wiki',
+								'*': 'абвг abcd',
+							},
+						},
+					},
+				],
+				pagelanguage: 'sr',
+				pagelanguagedir: 'ltr',
+			},
+		},
+	},
+};
+
+var noVariantPage = {
+	query: {
+		pages: {
+			'105': {
+				pageid: 105,
+				ns: 0,
+				title: "No Variant Page",
+				revisions: [
+					{
+						revid: 105,
+						parentid: 0,
+						slots: {
+							main: {
+								contentmodel: 'wikitext',
+								contentformat: 'text/x-wiki',
+								'*': 'абвг abcd\n__NOCONTENTCONVERT__',
+							},
+						},
+					},
+				],
+				pagelanguage: 'sr',
+				pagelanguagedir: 'ltr',
 			},
 		},
 	},
@@ -235,9 +339,13 @@ var revisionPage = {
 					{
 						revid: 63,
 						parentid: 0,
-						contentmodel: 'wikitext',
-						contentformat: 'text/x-wiki',
-						'*': '{{REVISIONID}}',
+						slots: {
+							main: {
+								contentmodel: 'wikitext',
+								contentformat: 'text/x-wiki',
+								'*': '{{REVISIONID}}',
+							},
+						},
 					},
 				],
 			},
@@ -497,6 +605,12 @@ var availableActions = {
 				return cb(null , lintPage);
 			} else if (body.revids === '103' || body.titles === 'Redlinks_Page') {
 				return cb(null , redlinksPage);
+			} else if (body.revids === '104' || body.titles === 'Variant_Page') {
+				return cb(null , variantPage);
+			} else if (body.revids === '105' || body.titles === 'No_Variant_Page') {
+				return cb(null , noVariantPage);
+			} else if (body.revids === '999' || body.titles === 'Old_Response') {
+				return cb(null , oldResponse);
 			} else {
 				return cb(null, { query: { pages: {
 					'-1': {

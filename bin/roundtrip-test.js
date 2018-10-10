@@ -4,6 +4,7 @@
 
 require('../core-upgrade.js');
 
+require('colors');
 var domino = require('domino');
 var yargs = require('yargs');
 var zlib = require('pn/zlib');
@@ -11,11 +12,12 @@ var zlib = require('pn/zlib');
 var Promise = require('../lib/utils/promise.js');
 var Util = require('../lib/utils/Util.js').Util;
 var DU = require('../lib/utils/DOMUtils.js').DOMUtils;
+var TestUtils = require('../tests/TestUtils.js').TestUtils;
 var apiUtils = require('../lib/api/apiUtils');
 var ParsoidConfig = require('../lib/config/ParsoidConfig.js').ParsoidConfig;
 var Diff = require('../lib/utils/Diff.js').Diff;
 
-var defaultContentVersion = '1.6.0';
+var defaultContentVersion = '2.0.0';
 
 function displayDiff(type, count) {
 	var pad = (10 - type.length);  // Be positive!
@@ -304,7 +306,7 @@ var getMatchingHTML = function(body, offsetRange, nlDiffs) {
 	}
 	// No need to use ppToXML above since we're stripping
 	// data-* attributes anyways.
-	html = DU.normalizeOut(html);
+	html = TestUtils.normalizeOut(html);
 
 	// Normalize away <br/>'s added by Parsoid because of newlines in wikitext.
 	// Do this always, not just when nlDiffs is true, because newline diffs
@@ -312,43 +314,88 @@ var getMatchingHTML = function(body, offsetRange, nlDiffs) {
 	return html.replace(/<p>\s*<br\s*\/?>\s*/g, '<p>').replace(/<p><\/p>/g, '').replace(/(^\s+|\s+$)/g, '');
 };
 
-var normalizeWikitext = function(str) {
-	// Ignore leading tabs vs. leading spaces
-	str = str.replace(/^\t/, ' ');
-	str = str.replace(/\n\t/g, '\n ');
-	// Normalize multiple spaces to single space
-	str = str.replace(/ +/g, ' ');
-	// Eliminate spaces around wikitext chars
-	// gwicke: disabled for now- too aggressive IMO
-	// str = str.replace(/([<"'!#\*:;+-=|{}\[\]\/]) /g, "$1");
-	// Ignore capitalization of tags and void tag indications
-	str = str.replace(/<(\/?)([^ >\/]+)((?:[^>\/]|\/(?!>))*)\/?>/g,
-		function(match, close, name, remaining) {
-			return '<' + close + name.toLowerCase() +
-				remaining.replace(/ $/, '') + '>';
+/* This doesn't try to do a really thorough job of normalization and misses a number
+ * of scenarios, for example, anywhere where sol-transparent markup like comments,
+ * noinclude, category links, etc. are present.
+ *
+ * On the flip side, it can occasionally do incorrect normalization when this markup
+ * is present in extension blocks (nowiki, syntaxhighlight, etc.) where this text
+ * is not really interpreted as wikitext.
+ */
+function normalizeWikitext(wt, opts) {
+	if (opts.preDiff) {
+		// Whitespace in ordered, unordered, definition lists
+		// Whitespace in first table cell/header, row, and caption
+		wt = wt.replace(/^([*#:;]|\|[-+|]?|!!?)[ \t]*(.*?)[ \t]*$/mg, "$1$1");
+
+		// Whitespace in headings
+		wt = wt.replace(/^(=+)[ \t]*([^\n]*?)[ \t]*(=+)[ \t]*$/mg, "$1$2$3");
+	}
+
+	if (opts.newlines) {
+		// Normalize newlines before/after headings
+		wt = wt.replace(/\n*(\n=[^\n]*=$\n)\n*/mg, "$1");
+
+		// Normalize newlines before lists
+		wt = wt.replace(/(^[^*][^\n]*$\n)\n+([*])/mg, "$1$2");
+		wt = wt.replace(/(^[^#][^\n]*$\n)\n+([#])/mg, "$1$2");
+		wt = wt.replace(/(^[^:][^\n]*$\n)\n+([:])/mg, "$1$2");
+		wt = wt.replace(/(^[^;][^\n]*$\n)\n+([;])/mg, "$1$2");
+
+		// Normalize newlines after lists
+		wt = wt.replace(/(^[*][^\n]*$\n)\n+([^*])/mg, "$1$2");
+		wt = wt.replace(/(^[#][^\n]*$\n)\n+([^#])/mg, "$1$2");
+		wt = wt.replace(/(^[:][^\n]*$\n)\n+([^:])/mg, "$1$2");
+		wt = wt.replace(/(^[;][^\n]*$\n)\n+([^;])/mg, "$1$2");
+
+		// Normalize newlines before/after tables
+		wt = wt.replace(/\n+(\n{\|)/mg, "$1");
+		wt = wt.replace(/(\|}\n)\n+/mg, "$1");
+
+		// Strip leading & trailing newlines
+		wt = wt.replace(/^\n+|\n$/, '');
+	}
+
+	if (opts.postDiff) {
+		// Ignore leading tabs vs. leading spaces
+		wt = wt.replace(/^\t/, ' ');
+		wt = wt.replace(/\n\t/g, '\n ');
+		// Normalize multiple spaces to single space
+		wt = wt.replace(/ +/g, ' ');
+		// Ignore capitalization of tags and void tag indications
+		wt = wt.replace(/<(\/?)([^ >\/]+)((?:[^>\/]|\/(?!>))*)\/?>/g,
+			function(match, close, name, remaining) {
+				return '<' + close + name.toLowerCase() +
+					remaining.replace(/ $/, '') + '>';
+			});
+		// Ignore whitespace in table cell attributes
+		wt = wt.replace(/(^|\n|\|(?=\|)|!(?=!))(\{\||\|[\-+]*|!) *([^|\n]*?) *(?=[|\n]|$)/g, '$1$2$3');
+		// Ignore trailing semicolons and spaces in style attributes
+		wt = wt.replace(/style\s*=\s*"[^"]+"/g, function(match) {
+			return match.replace(/\s|;(?=")/g, '');
 		});
-	// Ignore whitespace in table cell attributes
-	str = str.replace(/(^|\n|\|(?=\|)|!(?=!))(\{\||\|[\-+]*|!) *([^|\n]*?) *(?=[|\n]|$)/g, '$1$2$3');
-	// Ignore trailing semicolons and spaces in style attributes
-	str = str.replace(/style\s*=\s*"[^"]+"/g, function(match) {
-		return match.replace(/\s|;(?=")/g, '');
-	});
-	// Strip double-quotes
-	str = str.replace(/"([^"]*?)"/g, '$1');
-	// Ignore implicit </small> and </center> in table cells or the end
-	// of the string for now
-	str = str.replace(/(^|\n)<\/(?:small|center)>(?=\n[|!]|\n?$)/g, '');
-	str = str.replace(/([|!].*?)<\/(?:small|center)>(?=\n[|!]|\n?$)/gi, '$1');
-	return str;
-};
+		// Strip double-quotes
+		wt = wt.replace(/"([^"]*?)"/g, '$1');
+		// Ignore implicit </small> and </center> in table cells or the end
+		// of the wting for now
+		wt = wt.replace(/(^|\n)<\/(?:small|center)>(?=\n[|!]|\n?$)/g, '');
+		wt = wt.replace(/([|!].*?)<\/(?:small|center)>(?=\n[|!]|\n?$)/gi, '$1');
+	}
+
+	return wt;
+}
 
 // Get diff substrings from offsets
 var formatDiff = function(oldWt, newWt, offset, context) {
 	return [
-		'----',
-		oldWt.substring(offset[0].start - context, offset[0].end + context),
-		'++++',
-		newWt.substring(offset[1].start - context, offset[1].end + context),
+		'------',
+		oldWt.substring(offset[0].start - context, offset[0].start).blue +
+		oldWt.substring(offset[0].start, offset[0].end).green +
+		oldWt.substring(offset[0].end, offset[0].end + context).blue,
+		'++++++',
+		newWt.substring(offset[1].start - context, offset[1].start).blue +
+		newWt.substring(offset[1].start, offset[1].end).red +
+		newWt.substring(offset[1].end, offset[1].end + context).blue,
 	].join('\n');
 };
 
@@ -365,6 +412,23 @@ function stripElementIds(node) {
 		}
 		node = node.nextSibling;
 	}
+}
+
+function genSyntacticDiffs(data) {
+	// Do another diff without normalizations
+
+	var results = [];
+	var diff = Diff.diffLines(data.oldWt, data.newWt);
+	var offsets = Diff.convertDiffToOffsetPairs(diff, data.oldLineLengths, data.newLineLengths);
+	for (var i = 0; i < offsets.length; i++) {
+		var offset = offsets[i];
+		results.push({
+			type: 'skip',
+			offset: offset,
+			wtDiff: formatDiff(data.oldWt, data.newWt, offset, 0),
+		});
+	}
+	return results;
 }
 
 var checkIfSignificant = function(offsets, data) {
@@ -392,31 +456,34 @@ var checkIfSignificant = function(offsets, data) {
 	stripElementIds(newBody.ownerDocument.body);
 
 	// Strip section tags from the DOMs
-	DU.stripSectionTags(oldBody.ownerDocument.body);
-	DU.stripSectionTags(newBody.ownerDocument.body);
+	DU.stripSectionTagsAndFallbackIds(oldBody.ownerDocument.body);
+	DU.stripSectionTagsAndFallbackIds(newBody.ownerDocument.body);
 
 	var i, offset;
 	var results = [];
 	// Use the full tests for fostered content.
-	// Fostered content => semantic diffs.
-	if (!/("|&quot;)fostered("|&quot;)\s*:\s*true\b/.test(oldBody.outerHTML)) {
+	// Fostered/misnested content => semantic diffs.
+	if (!/("|&quot;)(fostered|misnested)("|&quot;)\s*:\s*true\b/.test(oldBody.outerHTML)) {
 		// Quick test for no semantic diffs
 		// If parsoid-normalized HTML for old and new wikitext is identical,
 		// the wt-diffs are purely syntactic.
-		var normalizedOld = DU.normalizeOut(oldBody, true);
-		var normalizedNew = DU.normalizeOut(newBody, true);
+		//
+		// FIXME: abstract to ensure same opts are used for parsoidPost and normalizeOut
+		const normOpts = { parsoidOnly: true, scrubWikitext: true, rtTestMode: true };
+		const normalizedOld = TestUtils.normalizeOut(oldBody, normOpts);
+		const normalizedNew = TestUtils.normalizeOut(newBody, normOpts);
 		if (normalizedOld === normalizedNew) {
-			for (i = 0; i < offsets.length; i++) {
-				offset = offsets[i];
-				results.push({
-					type: 'skip',
-					offset: offset,
-					wtDiff: formatDiff(oldWt, newWt, offset, 0),
-				});
-			}
-			return results;
+			return genSyntacticDiffs(data);
+		} else {
+			// Uncomment to log the cause of the failure.  This is often useful
+			// for determining the root of non-determinism in rt.  See T151474
+			// console.log(Diff.diffLines(normalizedOld, normalizedNew));
 		}
 	}
+
+	// FIXME: In this code path below, the returned diffs might
+	// underreport syntactic diffs since these are based on
+	// diffs on normalized wikitext. Unclear how to tackle this.
 
 	// Do this after the quick test above because in `parsoidOnly`
 	// normalization, data-mw is not stripped.
@@ -444,9 +511,10 @@ var checkIfSignificant = function(offsets, data) {
 		var diff = Diff.patchDiff(oldHTML, newHTML);
 		if (diff !== null) {
 			// Normalize wts to check if we really have a semantic diff
-			var wt1 = normalizeWikitext(oldWt.substring(offset[0].start, offset[0].end));
-			var wt2 = normalizeWikitext(newWt.substring(offset[1].start, offset[1].end));
+			var wt1 = normalizeWikitext(oldWt.substring(offset[0].start, offset[0].end), { newlines: true, postDiff: true });
+			var wt2 = normalizeWikitext(newWt.substring(offset[1].start, offset[1].end), { newlines: true, postDiff: true });
 			if (wt1 !== wt2) {
+
 				// Syntatic diff + provide context for semantic diffs
 				thisResult.type = 'fail';
 				thisResult.wtDiff = formatDiff(oldWt, newWt, offset, 25);
@@ -522,10 +590,32 @@ var parsoidPost = Promise.async(function *(profile, options) {
 	return body;
 });
 
+function genLineLengths(str) {
+	return str.split(/^/m).map(function(l) {
+		return l.length;
+	});
+}
+
 var roundTripDiff = Promise.async(function *(profile, parsoidOptions, data) {
-	var diff = Diff.diffLines(data.newWt, data.oldWt);
-	var offsets = Diff.convertDiffToOffsetPairs(diff);
-	if (!diff.length || !offsets.length) { return []; }
+	var normOpts = { preDiff: true, newlines: true };
+
+	// Newline normalization to see if we can get to identical wt.
+	var wt1 = normalizeWikitext(data.oldWt, normOpts);
+	var wt2 = normalizeWikitext(data.newWt, normOpts);
+	data.oldLineLengths = genLineLengths(data.oldWt);
+	data.newLineLengths = genLineLengths(data.newWt);
+	if (wt1 === wt2) {
+		return genSyntacticDiffs(data);
+	}
+
+	// More conservative normalization this time around
+	normOpts.newlines = false;
+	var diff = Diff.diffLines(normalizeWikitext(data.oldWt, normOpts), normalizeWikitext(data.newWt, normOpts));
+	var offsets = Diff.convertDiffToOffsetPairs(diff, data.oldLineLengths, data.newLineLengths);
+	if (!offsets.length) {
+		// FIXME: Can this really happen??
+		return genSyntacticDiffs(data);
+	}
 
 	var contentmodel = data.contentmodel || 'wikitext';
 	var options = Object.assign({

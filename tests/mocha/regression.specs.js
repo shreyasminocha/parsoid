@@ -60,4 +60,155 @@ describe('Regression Specs', function() {
 		});
 	});
 
+	it('should ensure edited lists, headings, table cells preserve original whitespace in some scenarios', function() {
+		var wt = [
+			"* item",
+			"* <!--cmt--> item",
+			"* <div>item</div>",
+			"* [[Link|item]]",
+			"== heading ==",
+			"== <!--cmt--> heading ==",
+			"== <div>heading</div> ==",
+			"== [[Link|heading]] ==",
+			"{|",
+			"| cell",
+			"| <!--cmt--> cell",
+			"| <div>cell</div>",
+			"| [[Link|cell]]",
+			"|  unedited c1  || cell ||  unedited c3  || cell",
+			"|  unedited c1  || cell ||  unedited c3  ||   unedited c4",
+			"|}"
+		].join('\n');
+		return parse(wt).then(function(result) {
+			var origDOM = result.body;
+			var editedHTML = origDOM.innerHTML.replace(/item/g, 'edited item').replace(/heading/g, 'edited heading').replace(/cell/g, 'edited cell');
+
+			// Without selser, we should see normalized wikitext
+			return serialize(DU.parseHTML(editedHTML), null, {}).then(function(editedWT) {
+				editedWT.should.equal([
+					"*edited item",
+					"*<!--cmt-->edited item",
+					"*<div>edited item</div>",
+					"*[[Link|edited item]]",
+					"",
+					"==edited heading==",
+					"==<!--cmt-->edited heading==",
+					"==<div>edited heading</div>==",
+					"==[[Link|edited heading]]==",
+					"{|",
+					"|edited cell",
+					"|<!--cmt-->edited cell",
+					"|<div>edited cell</div>",
+					"|[[Link|edited cell]]",
+					"|unedited c1||edited cell||unedited c3||edited cell",
+					"|unedited c1||edited cell||unedited c3||unedited c4",
+					"|}"
+				].join('\n'));
+				// With selser, we should have whitespace heuristics applied
+				var options = {
+					useSelser: true,
+					pageSrc: wt,
+					origDOM: origDOM,
+				};
+				return serialize(DU.parseHTML(editedHTML), null, options).then(function(editedWT) {
+					editedWT.should.equal([
+						"* edited item",
+						"* <!--cmt-->edited item",
+						"* <div>edited item</div>",
+						"* [[Link|edited item]]",
+						"== edited heading ==",
+						"== <!--cmt-->edited heading ==",
+						"== <div>edited heading</div> ==",
+						"== [[Link|edited heading]] ==",
+						"{|",
+						"| edited cell",
+						"| <!--cmt-->edited cell",
+						"| <div>edited cell</div>",
+						"| [[Link|edited cell]]",
+						"|  unedited c1  || edited cell || unedited c3 || edited cell",
+						"|  unedited c1  || edited cell || unedited c3 ||   unedited c4",
+						"|}"
+					].join('\n'));
+				});
+			});
+		});
+	});
+
+	it('should not apply whitespace heuristics for HTML versions older than 1.7.0', function() {
+		var wt = [
+			"* item",
+			"* <!--cmt--> item",
+			"* <div>item</div>",
+			"* [[Link|item]]",
+			"== heading ==",
+			"== <!--cmt--> heading ==",
+			"== <div>heading</div> ==",
+			"== [[Link|heading]] ==",
+			"{|",
+			"| cell",
+			"| <!--cmt--> cell",
+			"| <div>cell</div>",
+			"| [[Link|cell]]",
+			"|}"
+		].join('\n');
+		return parse(wt).then(function(doc) {
+			var origHeader = doc.head.innerHTML;
+			var origBody = doc.body.innerHTML;
+			var editedHTML = origBody.replace(/item/g, 'edited item').replace(/heading/g, 'edited heading').replace(/cell/g, 'edited cell');
+			doc.body.innerHTML = editedHTML;
+
+			var options = {
+				useSelser: true,
+				pageSrc: wt,
+				origDOM: DU.parseHTML(origBody).body,
+			};
+			// Whitespace heuristics are enabled
+			return serialize(doc, null, options).then(function(editedWT) {
+				editedWT.should.equal([
+					"* edited item",
+					"* <!--cmt-->edited item",
+					"* <div>edited item</div>",
+					"* [[Link|edited item]]",
+					"== edited heading ==",
+					"== <!--cmt-->edited heading ==",
+					"== <div>edited heading</div> ==",
+					"== [[Link|edited heading]] ==",
+					"{|",
+					"| edited cell",
+					"| <!--cmt-->edited cell",
+					"| <div>edited cell</div>",
+					"| [[Link|edited cell]]",
+					"|}"
+				].join('\n'));
+
+				// Pretend we are in 1.6.1 version to disable whitespace heuristics
+				doc.body.innerHTML = editedHTML;
+				doc.head.innerHTML = origHeader.replace(/2.0.0/, '1.6.1');
+				options.origDOM = DU.parseHTML(origBody).body;
+
+				// Whitespace heuristics are disabled, but selser's
+				// buildSep heuristics will do the magic for non-text
+				// and non-comment nodes.
+				return serialize(doc, null, options).then(function(editedWT) {
+					editedWT.should.equal([
+						"*edited item",
+						"*<!--cmt-->edited item",
+						"* <div>edited item</div>",
+						"* [[Link|edited item]]",
+						"==edited heading==",
+						"==<!--cmt-->edited heading==",
+						"== <div>edited heading</div> ==",
+						"== [[Link|edited heading]] ==",
+						"{|",
+						"|edited cell",
+						"|<!--cmt-->edited cell",
+						"| <div>edited cell</div>",
+						"| [[Link|edited cell]]",
+						"|}"
+					].join('\n'));
+				});
+			});
+		});
+	});
+
 });

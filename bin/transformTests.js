@@ -34,7 +34,7 @@ Technical details:
 
  To create a test from an existing wikitext page, run the following
  commands, for example:
- $ node bin/parse.js --genTest QuoteTransformer,quoteTestFile.txt --pageName 'skating' < /dev/null > /dev/null
+ $ node bin/parse.js --genTest QuoteTransformer --genTestOut quoteTestFile.txt --pageName 'skating' < /dev/null > /dev/null
 
  For command line options and required parameters, type:
  $ node bin/transformerTest.js --help
@@ -42,6 +42,16 @@ Technical details:
  An example command line to validate and performance test the 'skating'
  wikipage created as a QuoteTransformer test:
  $ node bin/transformTests.js --log --QuoteTransformer --inputFile quoteTestFile.txt
+
+ There are also manually-written unit tests, which are run as follows:
+ $ node bin/transformTests.js --manual --ListHandler --inputFile tests/transformTests.txt
+
+ There are a number of tests in tests/transform directory.  To regenerate
+ these, use:
+ $ tools/regen-transformTests.sh
+
+ To run these pregenerated tests, use:
+ $ npm run transformTests
 */
 
 'use strict';
@@ -177,7 +187,7 @@ MockTTM.prototype.getTransforms = function(token, minRank) {
 
 // Use the TokenTransformManager.js guts (extracted essential functionality)
 // to dispatch each token to the registered token transform function
-MockTTM.prototype.ProcessTestFile = function(commandLine) {
+MockTTM.prototype.ProcessTestFile = function(opts) {
 	var transformerName;
 	var testName;
 	var result;
@@ -185,17 +195,17 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 	var testLines;
 	var numFailures = 0;
 
-	if (commandLine.timingMode) {
+	if (opts.timingMode) {
 		if (cachedState === false) {
 			cachedState = true;
-			testFile = fs.readFileSync(commandLine.inputFile, 'utf8');
+			testFile = fs.readFileSync(opts.inputFile, 'utf8');
 			testLines = testFile.split('\n');
 			cachedTestLines = testLines;
 		} else {
 			testLines = cachedTestLines;
 		}
 	} else {
-		testFile = fs.readFileSync(commandLine.inputFile, 'utf8');
+		testFile = fs.readFileSync(opts.inputFile, 'utf8');
 		testLines = testFile.split('\n');
 	}
 
@@ -216,7 +226,7 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 				if (result !== undefined && result.tokens.length !== 0) {
 					var stringResult = JSON.stringify(result.tokens);
 					if (stringResult === line) {
-						if (!commandLine.timingMode) {
+						if (!opts.timingMode) {
 							console.log(testName + ' ==> passed\n');
 						}
 					} else {
@@ -233,7 +243,7 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 				var token = JSON.parse(line);
 				if (token.constructor !== String) {	// cast object to token type
 					console.assert(defines[token.type] !== undefined, "Incorrect type [" + token.type + "] specified in test file\n");
-					token.prototype = token.constructor = defines[token.type];
+					Object.setPrototypeOf(token, defines[token.type].prototype);
 				}
 				var s = process.hrtime();
 				var res;
@@ -257,7 +267,7 @@ MockTTM.prototype.ProcessTestFile = function(commandLine) {
 				}
 				var diff = process.hrtime(s);
 				// NOTE: This is a bit of an overkill since no token transformer
-				// will take more than 1 second, but this is gauranteed correct
+				// will take more than 1 second, but this is guaranteed correct
 				// in all scenarios.
 				this.tokenTime += (diff[0] * 1e9 + diff[1]) / 1000000; // # milliseconds
 				break;
@@ -302,17 +312,17 @@ function CreatePipelines(lines) {
 
 // Use the TokenTransformManager.js guts (extracted essential functionality)
 // to dispatch each token to the registered token transform function
-MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) {
+MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, opts) {
 	var result;
 	var testFile;
 	var testLines;
 	var pipeLines;
 	var pipeLinesLength;
 
-	if (commandLine.timingMode) {
+	if (opts.timingMode) {
 		if (cachedState === false) {
 			cachedState = true;
-			testFile = fs.readFileSync(commandLine.inputFile, 'utf8');
+			testFile = fs.readFileSync(opts.inputFile, 'utf8');
 			testLines = testFile.split('\n');
 			pipeLines = CreatePipelines(testLines);
 			pipeLinesLength = pipeLines.length;
@@ -325,7 +335,7 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 			pipeLinesLength = cachedPipeLinesLength;
 		}
 	} else {
-		testFile = fs.readFileSync(commandLine.inputFile, 'utf8');
+		testFile = fs.readFileSync(opts.inputFile, 'utf8');
 		testLines = testFile.split('\n');
 		pipeLines = CreatePipelines(testLines);
 		pipeLinesLength = pipeLines.length;
@@ -341,7 +351,7 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 					case '[':	// desired result json string for test result verification
 						var stringResult = JSON.stringify(result.tokens);
 						if (stringResult === line) {
-							if (!commandLine.timingMode) {
+							if (!opts.timingMode) {
 								console.log('line ' + ((pipeLines[index])[element] + 1) + ' ==> passed\n');
 							}
 						} else {
@@ -357,7 +367,7 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 						var token = JSON.parse(line);
 						if (token.constructor !== String) {	// cast object to token type
 							console.assert(defines[token.type] !== undefined, "Incorrect type [" + token.type + "] specified in test file\n");
-							token.prototype = token.constructor = defines[token.type];
+							Object.setPrototypeOf(token, defines[token.type].prototype);
 						}
 						var s = process.hrtime();
 						var res;
@@ -379,7 +389,7 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 						}
 						var diff = process.hrtime(s);
 						// NOTE: This is a bit of an overkill since no token transformer
-						// will take more than 1 second, but this is gauranteed correct
+						// will take more than 1 second, but this is guaranteed correct
 						// in all scenarios.
 						this.tokenTime += (diff[0] * 1e9 + diff[1]) / 1000000; // # milliseconds
 						break;
@@ -390,23 +400,23 @@ MockTTM.prototype.ProcessWikitextFile = function(tokenTransformer, commandLine) 
 	return numFailures;
 };
 
-MockTTM.prototype.unitTest = function(tokenTransformer, commandLine) {
-	if (!commandLine.timingMode) {
-		console.log('Starting stand alone unit test running file ' + commandLine.inputFile + '\n');
+MockTTM.prototype.unitTest = function(tokenTransformer, opts) {
+	if (!opts.timingMode) {
+		console.log('Starting stand alone unit test running file ' + opts.inputFile + '\n');
 	}
-	tokenTransformer.manager.ProcessTestFile(commandLine);
-	if (!commandLine.timingMode) {
-		console.log('Ending stand alone unit test running file ' + commandLine.inputFile + '\n');
+	tokenTransformer.manager.ProcessTestFile(opts);
+	if (!opts.timingMode) {
+		console.log('Ending stand alone unit test running file ' + opts.inputFile + '\n');
 	}
 };
 
-MockTTM.prototype.wikitextTest = function(tokenTransformer, commandLine) {
-	if (!commandLine.timingMode) {
-		console.log('Starting stand alone wikitext test running file ' + commandLine.inputFile + '\n');
+MockTTM.prototype.wikitextTest = function(tokenTransformer, opts) {
+	if (!opts.timingMode) {
+		console.log('Starting stand alone wikitext test running file ' + opts.inputFile + '\n');
 	}
-	tokenTransformer.manager.ProcessWikitextFile(tokenTransformer, commandLine);
-	if (!commandLine.timingMode) {
-		console.log('Ending stand alone wikitext test running file ' + commandLine.inputFile + '\n');
+	tokenTransformer.manager.ProcessWikitextFile(tokenTransformer, opts);
+	if (!opts.timingMode) {
+		console.log('Ending stand alone wikitext test running file ' + opts.inputFile + '\n');
 	}
 };
 
@@ -460,17 +470,17 @@ var opts = yargs.usage('Usage: $0 [options] --TransformerName --inputFile /path/
 	}
 });
 
-function selectTestType(commandLine, manager, handler) {
+function selectTestType(opts, manager, handler) {
 	var numFailures = 0;
 	var iterator = 1;
-	if (commandLine.timingMode) {
+	if (opts.timingMode) {
 		iterator = 10000;
 	}
 	while (iterator--) {
-		if (commandLine.manual) {
-			numFailures += manager.unitTest(handler, commandLine);
+		if (opts.manual) {
+			numFailures += manager.unitTest(handler, opts);
 		} else {
-			numFailures += manager.wikitextTest(handler, commandLine);
+			numFailures += manager.wikitextTest(handler, opts);
 		}
 	}
 	return numFailures;

@@ -14,12 +14,12 @@ var fs = require('pn/fs');
 var path = require('path');
 var Alea = require('alea');
 var DU = require('../lib/utils/DOMUtils.js').DOMUtils;
+var TestUtils = require('../tests/TestUtils.js').TestUtils;
 var Promise = require('../lib/utils/promise.js');
 var ParsoidLogger = require('../lib/logger/ParsoidLogger.js').ParsoidLogger;
 var PEG = require('pegjs');
 var Util = require('../lib/utils/Util.js').Util;
 var JSUtils = require('../lib/utils/jsutils.js').JSUtils;
-var PTUtils = require('../tests/parserTests.utils.js');
 
 // Fetch up some of our wacky parser bits...
 var MWParserEnvironment = require('../lib/config/MWParserEnvironment.js').MWParserEnvironment;
@@ -32,12 +32,9 @@ var ParserHook = ParsoidConfig.loadExtension(
 var exitUnexpected = new Error('unexpected failure');  // unique marker value
 
 /**
- * @class
- *
  * Main class for the test environment.
  *
- * @singleton
- * @private
+ * @class
  */
 function ParserTests(testFilePath, modes) {
 	var parseFilePath = path.parse(testFilePath);
@@ -150,7 +147,7 @@ ParserTests.prototype.getTests = Promise.async(function *(argv) {
 });
 
 /**
- * Parse content of tests case file given as plaintext
+ * Parse content of tests case file given as plaintext.
  *
  * @param {string} content
  * @return {Array}
@@ -195,11 +192,12 @@ ParserTests.prototype.convertHtml2Wt = Promise.async(function *(options, mode, i
 });
 
 /**
- * For a selser test, check if a change we could make has already been tested in this round.
+ * For a selser test, check if a change we could make has already been
+ * tested in this round.
  * Used for generating unique tests.
  *
- * @param {Array} allChanges Already-tried changes
- * @param {Array} change Candidate change
+ * @param {Array} allChanges Already-tried changes.
+ * @param {Array} change Candidate change.
  * @return {boolean}
  */
 ParserTests.prototype.isDuplicateChangeTree = function(allChanges, change) {
@@ -225,7 +223,7 @@ var staticRandomString = "ahseeyooxooZ8Oon0boh";
  * @param {Object} item
  * @param {Node} body
  * @param {Array} changelist
- * @return {Node} the altered body
+ * @return {Node} The altered body.
  */
 ParserTests.prototype.applyChanges = function(item, body, changelist) {
 
@@ -251,8 +249,7 @@ ParserTests.prototype.applyChanges = function(item, body, changelist) {
 		var newNode;
 
 		// Don't separate legacy IDs from their H? node.
-		if (n.nodeName === 'SPAN' &&
-			n.getAttribute('typeof') === 'mw:FallbackId') {
+		if (DU.isFallbackIdSpan(n)) {
 			n = n.nextSibling || n.parentNode;
 		}
 
@@ -385,9 +382,9 @@ ParserTests.prototype.applyChanges = function(item, body, changelist) {
  * @param {Object} options
  * @param {Object} item
  * @param {Node} body
- * @return {Object} the body and change tree
- * @return {Node} [return.body] The altered body
- * @return {Array} [return.changeTree] The list of changes
+ * @return {Object} The body and change tree.
+ * @return {Node} [return.body] The altered body.
+ * @return {Array} [return.changeTree] The list of changes.
  */
 ParserTests.prototype.generateChanges = function(options, item, body) {
 	var random = new Alea((item.seed || '') + (item.title || ''));
@@ -516,7 +513,7 @@ ParserTests.prototype.generateChanges = function(options, item, body) {
  *
  * @param {Node} body
  * @param {Array} changes
- * @return {Node} the changed body
+ * @return {Node} The changed body.
  */
 ParserTests.prototype.applyManualChanges = function(body, changes) {
 	var err = null;
@@ -592,7 +589,7 @@ ParserTests.prototype.applyManualChanges = function(body, changes) {
 			var what = !optSelector ? [ this ] :
 				!DU.isElt(this) ? [ this ] /* text node hack! */ :
 				this.querySelectorAll(optSelector);
-			Array.prototype.forEach.call(what, function(node) {
+			Array.from(what).forEach((node) => {
 				if (node.parentNode) { node.parentNode.removeChild(node); }
 			});
 		},
@@ -601,6 +598,16 @@ ParserTests.prototype.applyManualChanges = function(body, changes) {
 				this.removeChild(this.firstChild);
 			}
 		},
+		wrap: function(w) {
+			var frag = this.ownerDocument.createElement("div");
+			frag.innerHTML = w;
+			var first = frag.firstChild;
+			this.parentNode.replaceChild(first, this);
+			while (first.firstChild) {
+				first = first.firstChild;
+			}
+			first.appendChild(this);
+		}
 	};
 
 	changes.forEach(function(change) {
@@ -617,7 +624,7 @@ ParserTests.prototype.applyManualChanges = function(body, changes) {
 		}
 		if (change[1] === 'contents') {
 			change = change.slice(1);
-			els = Array.prototype.reduce.call(els, function(acc, el) {
+			els = Array.from(els).reduce((acc, el) => {
 				acc.push.apply(acc, el.childNodes);
 				return acc;
 			}, []);
@@ -627,7 +634,7 @@ ParserTests.prototype.applyManualChanges = function(body, changes) {
 			err = new Error('bad mutator function: ' + change[1]);
 			return;
 		}
-		Array.prototype.forEach.call(els, function(el) {
+		Array.from(els).forEach((el) => {
 			fun.apply(el, change.slice(2));
 		});
 	});
@@ -667,54 +674,25 @@ ParserTests.prototype.prepareTest = Promise.async(function *(item, options, mode
 
 	item.time = {};
 
+	// These changes are for environment options that change between runs of
+	// different **modes**.  See `processTest` for changes per test.
 	if (item.options) {
-		console.assert(item.options.extensions === undefined);
+		// Reset uid so that blacklist output doesn't depend on which modes
+		// are being run before comparison.
+		this.env.initUID();
 
-		this.env.conf.wiki.namespacesWithSubpages[0] = false;
-
-		// Since we are reusing the 'env' object, set it to the default
-		// so that relative link prefix is back to "./"
-		this.env.initializeForPageName(this.env.conf.wiki.mainpage);
-
-		if (item.options.subpage !== undefined) {
-			this.env.conf.wiki.namespacesWithSubpages[0] = true;
-		}
-
-		if (item.options.title !== undefined &&
-				!Array.isArray(item.options.title)) {
-			// This sets the page name as well as the relative link prefix
-			// for the rest of the parse.  Do this redundantly with the above
-			// so that we start from the wiki.mainpage when resolving
-			// absolute subpages.
-			this.env.initializeForPageName(item.options.title);
-		}
 		// Page language matches "wiki language" (which is set by
 		// the item 'language' option).
 		this.env.page.pagelanguage = this.env.conf.wiki.lang;
 		this.env.page.pagelanguagedir = this.env.conf.wiki.rtl ? 'rtl' : 'ltr';
-
-		this.env.conf.wiki.allowExternalImages = [ '' ]; // all allowed
-		if (item.options.wgallowexternalimages !== undefined &&
-				!/^(1|true|)$/.test(item.options.wgallowexternalimages)) {
-			this.env.conf.wiki.allowExternalImages = undefined;
+		if (item.options.langconv) {
+			this.env.wtVariantLanguage = item.options.sourceVariant || null;
+			this.env.htmlVariantLanguage = item.options.variant || null;
+		} else {
+			// variant conversion is disabled by default
+			this.env.wtVariantLanguage = null;
+			this.env.htmlVariantLanguage = null;
 		}
-
-		// Process test-specific options
-		var defaults = {
-			scrubWikitext: MWParserEnvironment.prototype.scrubWikitext,
-			nativeGallery: MWParserEnvironment.prototype.nativeGallery,
-			wrapSections: false, // override for parser tests
-		};
-		var env = this.env;
-		Object.keys(defaults).forEach(function(opt) {
-			env[opt] = item.options.parsoid && item.options.parsoid.hasOwnProperty(opt) ?
-				item.options.parsoid[opt] : defaults[opt];
-		});
-
-		this.env.conf.wiki.responsiveReferences =
-			(item.options.parsoid && item.options.parsoid.responsiveReferences) ||
-			// The default for parserTests
-			{ enabled: false, threshold: 10 };
 	}
 
 	// Some useful booleans
@@ -735,7 +713,7 @@ ParserTests.prototype.prepareTest = Promise.async(function *(item, options, mode
 			// Strip some php output that has no wikitext representation
 			// (like .mw-editsection) and won't html2html roundtrip and
 			// therefore causes false failures.
-			html = DU.normalizePhpOutput(html);
+			html = TestUtils.normalizePhpOutput(html);
 		}
 		body = DU.parseHTML(html).body;
 		wt = yield this.convertHtml2Wt(options, mode, item, body);
@@ -871,18 +849,24 @@ ParserTests.prototype.processSerializedWT = Promise.async(function *(item, optio
 ParserTests.prototype.checkHTML = function(item, out, options, mode) {
 	var normalizedOut, normalizedExpected;
 	var parsoidOnly =
-		('html/parsoid' in item) ||
+		('html/parsoid' in item) || ('html/parsoid+langconv' in item) ||
 		(item.options.parsoid !== undefined && !item.options.parsoid.normalizePhp);
 
-	normalizedOut = DU.normalizeOut(out, parsoidOnly);
+	const normOpts = {
+		parsoidOnly: parsoidOnly,
+		preserveIEW: item.options.parsoid && item.options.parsoid.preserveIEW,
+		scrubWikitext: item.options.parsoid && item.options.parsoid.scrubWikitext,
+	};
+
+	normalizedOut = TestUtils.normalizeOut(out, normOpts);
 	out = DU.toXML(out, { innerXML: true });
 
 	if (item.cachedNormalizedHTML === null) {
 		if (parsoidOnly) {
 			var normalDOM = DU.parseHTML(item.html).body;
-			normalizedExpected = DU.normalizeOut(normalDOM, parsoidOnly);
+			normalizedExpected = TestUtils.normalizeOut(normalDOM, normOpts);
 		} else {
-			normalizedExpected = DU.normalizeHTML(item.html);
+			normalizedExpected = TestUtils.normalizeHTML(item.html);
 		}
 		item.cachedNormalizedHTML = normalizedExpected;
 	} else {
@@ -930,7 +914,7 @@ ParserTests.prototype.checkWikitext = function(item, out, options, mode) {
 /**
  * @method
  * @param {Object} [options]
- * @param {String} [mockAPIServerURL]
+ * @param {string} [mockAPIServerURL]
  * @return {Promise}
  */
 ParserTests.prototype.main = Promise.async(function *(options, mockAPIServerURL) {
@@ -968,7 +952,7 @@ ParserTests.prototype.main = Promise.async(function *(options, mockAPIServerURL)
 	var setup = function(parsoidConfig) {
 		// Init early so we can overwrite it here.
 		parsoidConfig.loadWMF = false;
-		parsoidConfig.initMwApiMap();
+		parsoidConfig.loadWMFApiMap();
 
 		parsoidConfig.useBatchAPI = true;
 
@@ -1071,15 +1055,14 @@ ParserTests.prototype.main = Promise.async(function *(options, mockAPIServerURL)
  * @return {Promise}
  */
 ParserTests.prototype.buildTasks = Promise.async(function *(item, targetModes, options) {
-	for (var i = 0; i < targetModes.length; i++) {
+	for (let i = 0; i < targetModes.length; i++) {
 		if (targetModes[i] === 'selser' && options.numchanges &&
 			options.selser !== 'noauto' && !options.changetree) {
-			var newitem;
 
 			// Prepend manual changes, if present, but not if 'selser' isn't
 			// in the explicit modes option.
 			if (item.options.parsoid && item.options.parsoid.changes) {
-				newitem = Util.clone(item);
+				const newitem = Util.clone(item);
 				// Mutating the item here is necessary to output 'manual' in
 				// the test's title and to differentiate it for blacklist.
 				// It can only get here in two cases:
@@ -1107,13 +1090,13 @@ ParserTests.prototype.buildTasks = Promise.async(function *(item, targetModes, o
 			item.selserChangeTrees = new Array(options.numchanges);
 
 			// Prepend a selser test that appends a comment to the root node
-			newitem = Util.clone(item);
+			let newitem = Util.clone(item);
 			newitem.changetree = 5;
 			yield this.prepareTest(newitem, options, 'selser');
 
-			for (var j = 0; j < item.selserChangeTrees.length; j++) {
-				var modeIndex = i;
-				var changesIndex = j;
+			for (let j = 0; j < item.selserChangeTrees.length; j++) {
+				const modeIndex = i;
+				const changesIndex = j;
 				newitem = Util.clone(item);
 				// Make sure we aren't reusing the one from manual changes
 				console.assert(newitem.changetree === undefined);
@@ -1140,6 +1123,17 @@ ParserTests.prototype.buildTasks = Promise.async(function *(item, targetModes, o
 					continue;
 				}
 			} else {
+				// The order here is important, in that cloning `item` should
+				// happen before `item` is used in `prepareTest()`, since
+				// we cache some properties (`cachedBODYstr`,
+				// `cachedNormalizedHTML`) that should be cleared before use
+				// in `newitem`.
+				if (targetModes[i] === 'wt2html' && 'html/parsoid+langconv' in item) {
+					const newitem = Util.clone(item);
+					newitem.options.langconv = true;
+					newitem.html = item['html/parsoid+langconv'];
+					yield this.prepareTest(newitem, options, targetModes[i]);
+				}
 				// A non-selser task, we can reuse the item.
 				yield this.prepareTest(item, options, targetModes[i]);
 			}
@@ -1323,7 +1317,7 @@ ParserTests.prototype.processItem = Promise.async(function *(item, options) { //
 });
 
 /**
- * Process an article test case (i.e. the text of an article we need for a test)
+ * Process an article test case (ie the text of an article we need for a test).
  *
  * @param {Object} item
  * @param {string} item.title
@@ -1389,7 +1383,6 @@ ParserTests.prototype.processTest = Promise.async(function *(item, options) {
 	}
 	yield this.env.switchToConfig(prefix);
 
-	// TODO: set language variant
 	// adjust config to match that used for PHP tests
 	// see core/tests/parser/parserTest.inc:setupGlobals() for
 	// full set of config normalizations done.
@@ -1401,7 +1394,7 @@ ParserTests.prototype.processTest = Promise.async(function *(item, options) {
 	wikiConf.script = '/index.php';
 	wikiConf.articlePath = '/wiki/$1';
 	wikiConf.interwikiMap.clear();
-	var iwl = PTUtils.iwl;
+	var iwl = TestUtils.iwl;
 	Object.keys(iwl).forEach(function(key) {
 		iwl[key].prefix = key;
 		wikiConf.interwikiMap.set(key, {});
@@ -1412,7 +1405,7 @@ ParserTests.prototype.processTest = Promise.async(function *(item, options) {
 	// Cannot modify namespaces otherwise since baseConfig is deep frozen.
 	wikiConf.siteInfo.namespaces = Util.clone(wikiConf.siteInfo.namespaces, true);
 	// Add 'MemoryAlpha' namespace (T53680)
-	PTUtils.addNamespace(wikiConf, {
+	TestUtils.addNamespace(wikiConf, {
 		"id": 100,
 		"case": "first-letter",
 		"canonical": "MemoryAlpha",
@@ -1420,14 +1413,14 @@ ParserTests.prototype.processTest = Promise.async(function *(item, options) {
 	});
 	// Testing
 	if (wikiConf.iwp === 'enwiki') {
-		PTUtils.addNamespace(wikiConf, {
+		TestUtils.addNamespace(wikiConf, {
 			"id": 4,
 			"case": "first-letter",
 			"subpages": "",
 			"canonical": "Project",
 			"*": "Base MW",
 		});
-		PTUtils.addNamespace(wikiConf, {
+		TestUtils.addNamespace(wikiConf, {
 			"id": 5,
 			"case": "first-letter",
 			"subpages": "",
@@ -1441,12 +1434,58 @@ ParserTests.prototype.processTest = Promise.async(function *(item, options) {
 		item.options.wginterwikimagic === undefined ||
 		/^(1|true|)$/.test(item.options.wginterwikimagic);
 
+	if (item.options) {
+		console.assert(item.options.extensions === undefined);
+
+		this.env.conf.wiki.namespacesWithSubpages[0] = false;
+
+		// Since we are reusing the 'env' object, set it to the default
+		// so that relative link prefix is back to "./"
+		this.env.initializeForPageName(this.env.conf.wiki.mainpage);
+
+		if (item.options.subpage !== undefined) {
+			this.env.conf.wiki.namespacesWithSubpages[0] = true;
+		}
+
+		if (item.options.title !== undefined &&
+				!Array.isArray(item.options.title)) {
+			// This sets the page name as well as the relative link prefix
+			// for the rest of the parse.  Do this redundantly with the above
+			// so that we start from the wiki.mainpage when resolving
+			// absolute subpages.
+			this.env.initializeForPageName(item.options.title);
+		}
+
+		this.env.conf.wiki.allowExternalImages = [ '' ]; // all allowed
+		if (item.options.wgallowexternalimages !== undefined &&
+				!/^(1|true|)$/.test(item.options.wgallowexternalimages)) {
+			this.env.conf.wiki.allowExternalImages = undefined;
+		}
+
+		// Process test-specific options
+		var defaults = {
+			scrubWikitext: MWParserEnvironment.prototype.scrubWikitext,
+			nativeGallery: MWParserEnvironment.prototype.nativeGallery,
+			wrapSections: false, // override for parser tests
+		};
+		var env = this.env;
+		Object.keys(defaults).forEach(function(opt) {
+			env[opt] = item.options.parsoid && item.options.parsoid.hasOwnProperty(opt) ?
+				item.options.parsoid[opt] : defaults[opt];
+		});
+
+		this.env.conf.wiki.responsiveReferences =
+			(item.options.parsoid && item.options.parsoid.responsiveReferences) ||
+			// The default for parserTests
+			{ enabled: false, threshold: 10 };
+	}
+
 	yield this.buildTasks(item, targetModes, options);
 });
 
 // Start the mock api server and kick off parser tests
 Promise.async(function *() {
-	var options = PTUtils.prepareOptions();
+	var options = TestUtils.prepareOptions();
 	var ret = yield serviceWrapper.runServices({ skipParsoid: true });
 	var runner = ret.runner;
 	var mockURL = ret.mockURL;

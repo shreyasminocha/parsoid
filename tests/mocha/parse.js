@@ -268,6 +268,5 @@ describe('ParserPipelineFactory', function() {
 				wt.should.equal(origWt);
 			});
 		});
-
 	});
 });
