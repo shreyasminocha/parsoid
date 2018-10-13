@@ -1,0 +1,444 @@
+<?php
+/**
+ * Insert paragraph tags where needed -- smartly and carefully
+ * -- there is much fun to be had mimicking "wikitext visual newlines"
+ * behavior as implemented by the PHP parser.
+ * @module
+ */
+
+namespace Parsoid\Lib\Wt2html\TT;
+
+require_once (__DIR__.'/../utils/Utils.php');
+require_once (__DIR__.'/TokenHandler.php');
+require_once (__DIR__.'/../parser.defines.php');
+
+// { $Util } = require('../../utils/Util.js'); // or the equivalent on the next line
+// $Util = require('../../utils/Util.js').Util;
+// $TokenHandler = require('./TokenHandler.js');
+// { CommentTk, EOFTk, NlTk, TagTk, SelfclosingTagTk, EndTagTk } = require('../parser.defines.js');
+
+// These are defined in the php parser's `BlockLevelPass`
+$blockElems = new Set(array(
+	'TABLE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'PRE', 'P', 'UL', 'OL', 'DL'));
+$antiBlockElems = new Set(array(
+	'TD', 'TH'));
+$alwaysSuppress = new Set(array(
+	'TR', 'DT', 'DD', 'LI'));
+$neverSuppress = new Set(array(
+	'CENTER', 'BLOCKQUOTE', 'DIV', 'HR', 'FIGURE'));
+
+/**
+ * @class
+ * @extends module:wt2html/tt/TokenHandler
+ */
+class ParagraphWrapper extends TokenHandler
+{
+	public $inPre;
+	public $hasOpenPTag;
+	public $inBlockElem;
+	public $tokenBuffer;
+	public $nlWsTokens;
+	public $newLineCount;
+	public $currLine;
+
+	public function __construct($manager, $options) /* use (&$undefined) */ {
+		parent::__construct($manager, $options);
+		$this->inPre = false;
+		$this->hasOpenPTag = false;
+		$this->inBlockElem = false;
+		$this->tokenBuffer = array();
+		$this->nlWsTokens = array();
+		$this->newLineCount = 0;
+		$this->currLine = null;
+		if (!$this->options->inlineContext && !$this->options->inPHPBlock) {
+			$this->manager->addTransform(
+				function ($token) /* use (&$undefined) */ { $this->onNewLineOrEOF($token); },
+				'ParagraphWrapper:onNewLine',
+				ParagraphWrapper::NEWLINE_RANK(),
+				'newline'
+			);
+			$this->manager->addTransform(
+				function ($token) /* use (&$undefined) */ { $this->onAny($token); },
+				'ParagraphWrapper:onAny',
+				ParagraphWrapper::ANY_RANK(),
+				'any'
+			);
+			$this->manager->addTransform(
+				function ($token) /* use (&$undefined) */ { $this->onNewLineOrEOF($token); },
+				'ParagraphWrapper:onEnd',
+				ParagraphWrapper::END_RANK(),
+				'end');
+		}
+		$this->reset();
+	}
+
+	// Ranks for token handlers
+	// EOF/NL tokens will also match 'ANY' handlers.
+	// However, we want them in the custom eof/newline handlers.
+	// So, set them to a lower rank (= higher priority) than
+	// the any handler.
+	public static function END_RANK() { return 2.95; }
+	public static function NEWLINE_RANK() { return 2.96; }
+	public static function ANY_RANK() { return 2.97; }
+	// If a handler sends back the incoming 'token' back without change,
+	// the SyncTTM (or AsyncTTM) will dispatch it to other matching handlers.
+	// But, we don't want processed tokens coming back into the P-handler again.
+	// To prevent this, we can set a rank on the token block to a higher value
+	// than all handlers here. Hence, SKIP_RANK has to be larger than the
+	// others above.
+	public static function SKIP_RANK() { return 2.971; }
+
+	public function reset() /* use (&$undefined) */ {
+		if ($this->inPre) {
+			// Clean up in case we run into EOF before seeing a </pre>
+			$this->manager->addTransform(
+				function ($token) /* use (&$undefined) */ { $this->onNewLineOrEOF($token); },
+				"ParagraphWrapper:onNewLine",
+				ParagraphWrapper::NEWLINE_RANK(),
+				'newline'
+			);
+		}
+		// This is the ordering of buffered tokens and how they should get emitted:
+		//
+		//   token-buffer         (from previous lines if newLineCount > 0)
+		//   newline-ws-tokens    (buffered nl+sol-transparent tokens since last non-nl-token)
+		//   current-line-tokens  (all tokens after newline-ws-tokens)
+		//
+		// newline-token-count is > 0 only when we encounter multiple "empty lines".
+		//
+		// Periodically, when it is clear where an open/close p-tag is required, the buffers
+		// are collapsed and emitted. Wherever tokens are buffered/emitted, verify that this
+		// order is preserved.
+		$this->resetBuffers();
+		$this->resetCurrLine();
+		$this->hasOpenPTag = false;
+		$this->inPre = false;
+		// NOTE: This flag is the local equivalent of what we're mimicking with
+		// the inPHPBlock pipeline option.
+		$this->inBlockElem = false;
+	}
+
+	public function resetBuffers() {
+		$this->tokenBuffer = array();
+		$this->nlWsTokens = array();
+		$this->newLineCount = 0;
+	}
+
+	public function resetCurrLine() /* use (&$undefined) */ {
+		if ($this->currLine && $this->currLine->openMatch || $this->currLine->closeMatch) {
+			$this->inBlockElem = !$this->currLine->closeMatch;
+		}
+		$this->currLine = array(
+			"tokens" => array(),
+			"hasWrappableTokens" => false,
+			// These flags, along with `inBlockElem` are concepts from the
+			// php parser's `BlockLevelPass`.
+			"openMatch" => false,
+			"closeMatch" => false
+		);
+	}
+
+	public function _processBuffers($token, $flushCurrentLine) /* use (&$undefined) */ {
+		$res = $this->processPendingNLs();
+		array_push($this->currLine->tokens, $token);
+		if ($flushCurrentLine) {
+			$res = $res->concat($this->currLine->tokens);
+			$this->resetCurrLine();
+		}
+		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use (&$undefined) {
+			json_encode($res)}
+		);
+		$res->rank = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
+		return $res;
+	}
+
+	public function _flushBuffers() /* use (&$undefined) */ {
+		// Assertion to catch bugs in p-wrapping; both cannot be true.
+		if ($this->newLineCount > 0) {
+			$this->env->log("error/p-wrap", "Failed assertion in _flushBuffers: newline-count:", $this->newLineCount, "; buffered tokens: ", json_encode($this->nlWsTokens));
+		}
+		$resToks = $this->tokenBuffer->concat($this->nlWsTokens);
+		$this->resetBuffers();
+		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use (&$undefined) {
+			json_encode($resToks)}
+		);
+		$resToks->rank = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
+		return $resToks;
+	}
+
+	public function discardOneNlTk($out) /* use (&$undefined) */ {
+		$i = 0;
+		$n = count($this->nlWsTokens);
+		while ($i < $n) {
+			$t = array_shift($this->nlWsTokens);
+			if ($t->constructor === $NlTk) {
+				return $t;
+			} else {
+				array_push($out, $t);
+			}
+			$i++;
+		}
+		return "";
+	}
+
+	public function openPTag($out) /* use (&$undefined) */ {
+		if (!$this->hasOpenPTag) {
+			$tplStartIndex = -1;
+			// Be careful not to expand template ranges unnecessarily.
+			// Look for open markers before starting a p-tag.
+			for ($i = 0;
+			     $i < count($out); $i++) {
+				$t = $out[$i];
+				if ($t->name === "meta") {
+					$typeOf = $t->getAttribute("typeof");
+					if (preg_match('/^mw:Transclusion$/', $typeOf)) {
+						// We hit a start tag and everything before it is sol-transparent.
+						$tplStartIndex = $i;
+						continue;
+					} else if (preg_match('/^mw:Transclusion/', $typeOf)) {
+						// End tag. All tokens before this are sol-transparent.
+						// Let us leave them all out of the p-wrapping.
+						$tplStartIndex = -1;
+						continue;
+					}
+				}
+				// Not a transclusion meta; Check for nl/sol-transparent tokens
+				// and leave them out of the p-wrapping.
+				if (!Util::isSolTransparent($this->env, $t) && $t->constructor !== $NlTk) {
+					break;
+				}
+			}
+			if ($tplStartIndex > -1) {
+				$i = $tplStartIndex;
+			}
+			array_splice($out, $i, 0, new TagTk('p'));
+			$this->hasOpenPTag = true;
+		}
+	}
+
+	public function closeOpenPTag($out) /* use (&$undefined) */ {
+		if ($this->hasOpenPTag) {
+			$tplEndIndex = -1;
+			// Be careful not to expand template ranges unnecessarily.
+			// Look for open markers before closing.
+			for ($i = count($out) - 1;
+			     $i > -1; $i--) {
+				$t = $out[$i];
+				if ($t->name === "meta") {
+					$typeOf = $t->getAttribute("typeof");
+					if (preg_match('/^mw:Transclusion$/', $typeOf)) {
+						// We hit a start tag and everything after it is sol-transparent.
+						// Don't include the sol-transparent tags OR the start tag.
+						$tplEndIndex = -1;
+						continue;
+					} else if (preg_match('/^mw:Transclusion/', $typeOf)) {
+						// End tag. The rest of the tags past this are sol-transparent.
+						// Let us leave them all out of the p-wrapping.
+						$tplEndIndex = $i;
+						continue;
+					}
+				}
+				// Not a transclusion meta; Check for nl/sol-transparent tokens
+				// and leave them out of the p-wrapping.
+				if (!Util::isSolTransparent($this->env, $t) && $t->constructor !== $NlTk) {
+					break;
+				}
+			}
+			if ($tplEndIndex > -1) {
+				$i = $tplEndIndex;
+			}
+			array_splice($out, $i + 1, 0, new EndTagTk('p'));
+			$this->hasOpenPTag = false;
+		}
+	}
+
+	// Handle NEWLINE tokens
+	public function onNewLineOrEOF($token) /* use (&$undefined) */ {
+		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "NL    |", function () use (&$undefined) {
+			json_encode($token)}
+		);
+		$l = $this->currLine;
+		if ($this->currLine->openMatch || $this->currLine->closeMatch) {
+			$this->closeOpenPTag($l->tokens);
+		} else if (!$this->inBlockElem && !$this->hasOpenPTag && $l->hasWrappableTokens) {
+			$this->openPTag($l->tokens);
+		}
+
+		// Assertion to catch bugs in p-wrapping; both cannot be true.
+		if ($this->newLineCount > 0 && count($l->tokens) > 0) {
+			$this->env->log("error/p-wrap", "Failed assertion in onNewLineOrEOF: newline-count:", $this->newLineCount, "; current line tokens: ", json_encode($l->tokens));
+		}
+
+		$this->tokenBuffer = $this->tokenBuffer->concat($l->tokens);
+
+		if ($token->constructor === $EOFTk) {
+			array_push($this->nlWsTokens, $token);
+			$this->closeOpenPTag($this->tokenBuffer);
+			$res = $this->processPendingNLs();
+			$this->reset();
+			$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use (&$undefined) {
+				json_encode($res)}
+			);
+			$res->rank = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
+			return array("tokens" => $res);
+		} else {
+			$this->resetCurrLine();
+			$this->newLineCount++;
+			array_push($this->nlWsTokens, $token);
+			return array("tokens" => array());
+		}
+	}
+
+	public function processPendingNLs() /* use (&$undefined) */ {
+		$resToks = $this->tokenBuffer;
+		$newLineCount = $this->newLineCount;
+		$nlTk = null;
+
+		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "        NL-count:", $newLineCount);
+
+		if ($newLineCount >= 2 && !$this->inBlockElem) {
+			$this->closeOpenPTag($resToks);
+
+			// First is emitted as a literal newline
+			array_push($resToks, $this->discardOneNlTk($resToks));
+			$newLineCount -= 1;
+
+			$remainder = $newLineCount % 2;
+
+			while ($newLineCount > 0) {
+				$nlTk = $this->discardOneNlTk($resToks);
+				if ($newLineCount % 2 === $remainder) {
+					if ($this->hasOpenPTag) {
+						array_push($resToks, new EndTagTk('p'));
+						$this->hasOpenPTag = false;
+					}
+					if ($newLineCount > 1) {
+						array_push($resToks, new TagTk('p'));
+						$this->hasOpenPTag = true;
+					}
+				} else {
+					array_push($resToks, new SelfclosingTagTk('br'));
+				}
+				array_push($resToks, $nlTk);
+				$newLineCount -= 1;
+			}
+		}
+
+		if ($this->currLine->openMatch || $this->currLine->closeMatch) {
+			$this->closeOpenPTag($resToks);
+			if ($newLineCount === 1) {
+				array_push($resToks, $this->discardOneNlTk($resToks));
+			}
+		}
+
+		// Gather remaining ws and nl tokens
+
+		$resToks = $resToks->concat($this->nlWsTokens);
+
+		// reset buffers
+		$this->resetBuffers();
+
+		return $resToks;
+	}
+
+	public function onAny($token) /* use (&$undefined, &$blockElems, &$antiBlockElems, &$alwaysSuppress, &$neverSuppress) */
+	{
+		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "ANY   |", function () use (&$undefined) {
+			json_encode($token)}
+		);
+		$res = null;
+		$tc = $token->constructor;
+		if ($tc === $TagTk && $token->name === 'pre' && !Util::isHTMLTag($token)) {
+			if ($this->inBlockElem) {
+				array_push($this->currLine->tokens, ' ');
+				return array("tokens" => array());
+			} else {
+				$this->manager->removeTransform(ParagraphWrapper::NEWLINE_RANK(), 'newline');
+				$this->inPre = true;
+				// This will put us `inBlockElem`, so we need the extra `!inPre`
+				// condition below.  Presumably, we couldn't have entered
+				// `inBlockElem` while being `inPre`.  Alternatively, we could say
+				// that index-pre is "never suppressing" and set the `closeMatch`
+				// flag.  The point of all this is that we want to close any open
+				// p-tags.
+				$this->currLine->openMatch = true;
+				return array("tokens" => $this->_processBuffers($token, true));
+			}
+		} else if ($tc === $EndTagTk && $token->name === 'pre' && !Util::isHTMLTag($token)) {
+			if ($this->inBlockElem && !$this->inPre) {
+				// No pre-tokens inside block tags -- swallow it.
+				return array("tokens" => array());
+			} else {
+				if ($this->inPre) {
+					$this->manager->addTransform(function ($token) use (&$token, &$undefined) {
+						$this->onNewLineOrEOF($token)}
+						, "ParagraphWrapper:onNewLine", ParagraphWrapper::NEWLINE_RANK(), 'newline');
+					$this->inPre = false;
+				}
+				$this->currLine->closeMatch = true;
+				$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use (&$undefined) {
+					json_encode($token)}
+				);
+				$res = array($token);
+				$res->rank = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
+				return array("tokens" => $res);
+			}
+		} else if ($tc === $EOFTk || $this->inPre) {
+			$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use (&$undefined) {
+				json_encode($token)}
+			);
+			$res = array($token);
+			$res->rank = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
+			return array("tokens" => $res);
+		} else if ($tc === $CommentTk || $tc === $String && preg_match('/^[\t ]*$/', $token) || Util::isEmptyLineMetaToken($token)) {
+			if ($this->newLineCount === 0) {
+				array_push($this->currLine->tokens, $token);
+				// Since we have no pending newlines to trip us up,
+				// no need to buffer -- just flush everything
+				return array("tokens" => $this->_flushBuffers());
+			} else {
+				// We are in buffering mode waiting till we are ready to
+				// process pending newlines.
+				array_push($this->nlWsTokens, $token);
+				return array("tokens" => array());
+			}
+		} else if ($tc !== $String && Util::isSolTransparent($this->env, $token)) {
+			if ($this->newLineCount === 0) {
+				array_push($this->currLine->tokens, $token);
+				// Since we have no pending newlines to trip us up,
+				// no need to buffer -- just flush everything
+				return array("tokens" => $this->_flushBuffers());
+			} else if ($this->newLineCount === 1) {
+				// Swallow newline, whitespace, comments, and the current line
+				$this->tokenBuffer = $this->tokenBuffer->concat($this->nlWsTokens, $this->currLine->tokens);
+				$this->newLineCount = 0;
+				$this->nlWsTokens = array();
+				$this->resetCurrLine();
+
+				// But, don't process the new token yet.
+				array_push($this->currLine->tokens, $token);
+				return array("tokens" => array());
+			} else {
+				return array("tokens" => $this->_processBuffers($token, false));
+			}
+		} else {
+			$name = strtoupper($token->name || '');
+			if ($blockElems->has($name) && $tc !== $EndTagTk || $antiBlockElems->has($name) && $tc === $EndTagTk || $alwaysSuppress->has($name)) {
+				$this->currLine->openMatch = true;
+			}
+			if ($blockElems->has($name) && $tc === $EndTagTk || $antiBlockElems->has($name) && $tc !== $EndTagTk || $neverSuppress->has($name)) {
+				$this->currLine->closeMatch = true;
+			}
+			$this->currLine->hasWrappableTokens = true;
+			return array("tokens" => $this->_processBuffers($token, false));
+		}
+	}
+}
+/*
+if (gettype($module) === "object") {
+	$module->exports->ParagraphWrapper = $ParagraphWrapper;
+}
+*/
+
+?>
+
