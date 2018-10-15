@@ -380,4 +380,3 @@ class QuoteTransformer extends TokenHandler {
 }
 
 ?>
-

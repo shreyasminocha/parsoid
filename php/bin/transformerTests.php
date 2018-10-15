@@ -61,6 +61,7 @@ require_once (__DIR__.'/../lib/config/WikitextConstants.php');
 
 require_once (__DIR__.'/../lib/wt2html/parser.defines.php');
 require_once (__DIR__.'/../lib/wt2html/tt/QuoteTransformer.php');
+require_once (__DIR__.'/../lib/wt2html/tt/ParagraphWrapper.php');
 
 use Parsoid\Lib\Config;
 use Parsoid\Lib\Config\Env;
@@ -633,17 +634,17 @@ function runTests($argc, $argv) {
 
 	$startTime = microtime(true);
 
-	if ($opts->QuoteTransformer) {
+	if (isset($opts->QuoteTransformer)) {
 		$qt = new Parsoid\Lib\Wt2html\TT\QuoteTransformer($manager, function () {});
 		$numFailures = selectTestType($opts, $manager, $qt);
+	} else if (isset($opts->ParagraphWrapper)) {
+		$pw = new Parsoid\Lib\Wt2html\TT\ParagraphWrapper($manager, function () {});
+		$numFailures = selectTestType($opts, $manager, $pw);
 	}
 	/*
 	  else if ($opts->ListHandler) {
 		var lh = new ListHandler(manager, {});
 		selectTestType(argv, manager, lh);
-	} else if ($opts->ParagraphWrapper) {
-		var pw = new ParagraphWrapper(manager, {});
-		selectTestType(argv, manager, pw);
 	} else if ($opts->PreHandler) {
 		var ph = new PreHandler(manager, {});
 		selectTestType(argv, manager, ph);
