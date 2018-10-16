@@ -300,6 +300,7 @@ class NlTk extends Token {
 	 * @param {Array} tsr The TSR of the newline(s).
 	 */
 	public function __construct($tsr) {
+		$this->name = "";
 		$this->type = "NlTk";
 		if (isset($tsr)) {
 			/** @type {Object} */
@@ -318,6 +319,7 @@ class CommentTk extends Token {
 	 * @param {Object} dataAttribs data-parsoid object.
 	 */
 	public function __construct($value, $dataAttribs) {
+		$this->name = "";
 		$this->type = "CommentTk";
 		/** @type {string} */
 		$this->value = $value;
@@ -332,6 +334,7 @@ class CommentTk extends Token {
 	/* -------------------- EOFTk -------------------- */
 class EOFTk extends Token {
 	public function __construct() {
+		$this->name = "";
 		$this->type = "EOFTk";
 	}
 }
@@ -348,7 +351,7 @@ class EOFTk extends Token {
 class Params extends ArrayObject {
 	public function __construct($params){
 		super($params->length);
-        for ($i = 0; $i < $params->length; $i++) {
+      for ($i = 0; $i < $params->length; $i++) {
 			$this[$i] = $params[$i];
 		}
 		$this->argDict = null;
