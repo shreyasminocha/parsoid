@@ -131,7 +131,7 @@ class ParagraphWrapper extends TokenHandler {
 	}
 
 	public function resetCurrLine() {
-		if (isset($this->currLine) && isset($this->currLine["openMatch"]) || isset($this->currLine["closeMatch"])) {
+		if ($this->currLine && $this->currLine["openMatch"] || $this->currLine["closeMatch"]) {
 			$this->inBlockElem = !$this->currLine["closeMatch"];
 		}
 		$this->currLine = [
@@ -194,7 +194,8 @@ class ParagraphWrapper extends TokenHandler {
 			// Look for open markers before starting a p-tag.
 			for ($i = 0; $i < count($out); $i++) {
 				$t = $out[$i];
-				if ($t->name === "meta") {
+				$tt = Util::getType($t);
+				if ($tt !== "String" && $t->name === "meta") {
 					$typeOf = $t->getAttribute("typeof");
 					if (preg_match('/^mw:Transclusion$/', $typeOf)) {
 						// We hit a start tag and everything before it is sol-transparent.
@@ -209,7 +210,7 @@ class ParagraphWrapper extends TokenHandler {
 				}
 				// Not a transclusion meta; Check for nl/sol-transparent tokens
 				// and leave them out of the p-wrapping.
-				if (!Util::isSolTransparent($this->env, $t) && $t->getType() !== "NlTk") {
+				if (!Util::isSolTransparent($this->env, $t) && $tt !== "NlTk") {
 					break;
 				}
 			}
@@ -228,7 +229,8 @@ class ParagraphWrapper extends TokenHandler {
 			// Look for open markers before closing.
 			for ($i = count($out) - 1; $i > -1; $i--) {
 				$t = $out[$i];
-				if ($t->name === "meta") {
+				$tt = Util::getType($t);
+				if ($tt !== "String" && $t->name === "meta") {
 					$typeOf = $t->getAttribute("typeof");
 					if (preg_match('/^mw:Transclusion$/', $typeOf)) {
 						// We hit a start tag and everything after it is sol-transparent.
@@ -244,7 +246,7 @@ class ParagraphWrapper extends TokenHandler {
 				}
 				// Not a transclusion meta; Check for nl/sol-transparent tokens
 				// and leave them out of the p-wrapping.
-				if (!Util::isSolTransparent($this->env, $t) && $t->getType() !== "NlTk") {
+				if (!Util::isSolTransparent($this->env, $t) && $tt !== "NlTk") {
 					break;
 				}
 			}
@@ -264,13 +266,13 @@ class ParagraphWrapper extends TokenHandler {
 		$l = $this->currLine;
 		if ($this->currLine["openMatch"] || $this->currLine["closeMatch"]) {
 			$this->closeOpenPTag($l["tokens"]);
-		} else if (!isset($this->inBlockElem) && !isset($this->hasOpenPTag) && isset($l["hasWrappableTokens"])) {
-			$this->openPTag($l->tokens);
+		} else if (!$this->inBlockElem && !$this->hasOpenPTag && $l["hasWrappableTokens"]) {
+			$this->openPTag($l["tokens"]);
 		}
 
 		// Assertion to catch bugs in p-wrapping; both cannot be true.
 		if ($this->newLineCount > 0 && count($l["tokens"]) > 0) {
-			$this->env["log"]("error/p-wrap", "Failed assertion in onNewLineOrEOF: newline-count:", $this->newLineCount, "; current line tokens: ", json_encode($l->tokens));
+			$this->env["log"]("error/p-wrap", "Failed assertion in onNewLineOrEOF: newline-count:", $this->newLineCount, "; current line tokens: ", json_encode($l["tokens"]));
 		}
 
 		$this->tokenBuffer = array_merge($this->tokenBuffer, $l["tokens"]);
@@ -427,7 +429,7 @@ class ParagraphWrapper extends TokenHandler {
 				return [ "tokens" => $this->_processBuffers($token, false) ];
 			}
 		} else {
-			$name = strtoupper(isset($token->name) ? $token->name : "");
+			$name = strtoupper($tc == 'String' ? "" : $token->name);
 			if (isset($blockElems[$name]) && $tc !== "EndTagTk" || isset($antiBlockElems[$name]) && $tc === "EndTagTk" || isset($alwaysSuppress[$name])) {
 				$this->currLine["openMatch"] = true;
 			}
