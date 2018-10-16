@@ -179,7 +179,7 @@ class ParagraphWrapper extends TokenHandler {
 		$n = count($this->nlWsTokens);
 		while ($i < $n) {
 			$t = array_shift($this->nlWsTokens);
-			if (Util::getType() === "NlTk") {
+			if (Util::getType($t) === "NlTk") {
 				return $t;
 			} else {
 				$out[] = $t;
@@ -219,7 +219,7 @@ class ParagraphWrapper extends TokenHandler {
 			if ($tplStartIndex > -1) {
 				$i = $tplStartIndex;
 			}
-			array_splice($out, $i, 0, new TagTk('p'));
+			array_splice($out, $i, 0, [new TagTk('p')]);
 			$this->hasOpenPTag = true;
 		}
 	}
@@ -255,7 +255,7 @@ class ParagraphWrapper extends TokenHandler {
 			if ($tplEndIndex > -1) {
 				$i = $tplEndIndex;
 			}
-			array_splice($out, $i + 1, 0, new EndTagTk('p'));
+			array_splice($out, $i + 1, 0, [new EndTagTk('p')]);
 			$this->hasOpenPTag = false;
 		}
 	}
