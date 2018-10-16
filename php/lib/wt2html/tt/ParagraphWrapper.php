@@ -58,19 +58,19 @@ class ParagraphWrapper extends TokenHandler {
 		// Disable p-wrapper
 		if (!isset($this->options->inlineContext) && !isset($this->options->inPHPBlock)) {
 			$this->manager->addTransform(
-				function ($token) { $this->onNewLineOrEOF($token); },
+				function ($token) { return $this->onNewLineOrEOF($token); },
 				'ParagraphWrapper:onNewLine',
 				ParagraphWrapper::NEWLINE_RANK(),
 				'newline'
 			);
 			$this->manager->addTransform(
-				function ($token) { $this->onAny($token); },
+				function ($token) { return $this->onAny($token); },
 				'ParagraphWrapper:onAny',
 				ParagraphWrapper::ANY_RANK(),
 				'any'
 			);
 			$this->manager->addTransform(
-				function ($token) { $this->onNewLineOrEOF($token); },
+				function ($token) { return $this->onNewLineOrEOF($token); },
 				'ParagraphWrapper:onEnd',
 				ParagraphWrapper::END_RANK(),
 				'end');
@@ -98,7 +98,7 @@ class ParagraphWrapper extends TokenHandler {
 		if ($this->inPre) {
 			// Clean up in case we run into EOF before seeing a </pre>
 			$this->manager->addTransform(
-				function ($token) { $this->onNewLineOrEOF($token); },
+				function ($token) { return $this->onNewLineOrEOF($token); },
 				"ParagraphWrapper:onNewLine",
 				ParagraphWrapper::NEWLINE_RANK(),
 				'newline'
@@ -380,7 +380,7 @@ class ParagraphWrapper extends TokenHandler {
 			} else {
 				if ($this->inPre) {
 					$this->manager->addTransform(function ($token) {
-						$this->onNewLineOrEOF($token);
+						return $this->onNewLineOrEOF($token);
 					}
 					, "ParagraphWrapper:onNewLine", ParagraphWrapper::NEWLINE_RANK(), 'newline');
 					$this->inPre = false;
