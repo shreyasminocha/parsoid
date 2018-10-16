@@ -18,7 +18,7 @@ class TokenHandler {
 	public function __construct($manager, $options) {
 		$this->manager = $manager;
 		$this->env = $manager->env;
-		$this->options = $options;
+		$this->options = [ $options ];
 		$this->init();
 	}
 

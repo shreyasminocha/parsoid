@@ -111,9 +111,9 @@ class QuoteTransformer extends TokenHandler {
 	}
 
 	public function onAny($token) {
-		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "ANY   |",
-			(!$this->isActive ? " ---> " : "") . json_encode($token)
-		);
+		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "ANY   |", function () {
+			(!isset($this->isActive) ? " ---> " : "") . json_encode($token);
+		});
 
 		$this->currentChunk[] = $token;
 		return [];
@@ -124,9 +124,9 @@ class QuoteTransformer extends TokenHandler {
  * collected quote tokens so far.
  */
 	public function onNewLine($token) {
-		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "NL    |",
-			(!$this->isActive ? " ---> " : "") . json_encode($token)
-		);
+		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "NL    |", function () {
+			(!isset($this->isActive) ? " ---> " : "") . json_encode($token);
+		});
 
 
 		if (!$this->isActive) {

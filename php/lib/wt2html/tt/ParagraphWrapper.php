@@ -8,9 +8,14 @@
 
 namespace Parsoid\Lib\Wt2html\TT;
 
-require_once (__DIR__.'/../../utils/Utils.php');
 require_once (__DIR__.'/TokenHandler.php');
 require_once (__DIR__.'/../parser.defines.php');
+require_once (__DIR__.'/../../utils/Utils.php');
+
+use Parsoid\Lib\Utils\Util;
+use Parsoid\Lib\Wt2html\TagTk;
+use Parsoid\Lib\Wt2html\EndTagTk;
+use Parsoid\Lib\Wt2html\SelfclosingTagTk;
 
 function makeSet( $a ) {
 	$set = [];
@@ -51,7 +56,9 @@ class ParagraphWrapper extends TokenHandler {
 		$this->nlWsTokens = array();
 		$this->newLineCount = 0;
 		$this->currLine = null;
-		if (!$this->options->inlineContext && !$this->options->inPHPBlock) {
+
+		// Disable p-wrapper
+		if (!isset($this->options->inlineContext) && !isset($this->options->inPHPBlock)) {
 			$this->manager->addTransform(
 				function ($token) { $this->onNewLineOrEOF($token); },
 				'ParagraphWrapper:onNewLine',
@@ -126,7 +133,7 @@ class ParagraphWrapper extends TokenHandler {
 	}
 
 	public function resetCurrLine() {
-		if ($this->currLine && $this->currLine->openMatch || $this->currLine->closeMatch) {
+		if (isset($this->currLine) && isset($this->currLine->openMatch) || isset($this->currLine->closeMatch)) {
 			$this->inBlockElem = !$this->currLine->closeMatch;
 		}
 		$this->currLine = array(
@@ -156,7 +163,7 @@ class ParagraphWrapper extends TokenHandler {
 	public function _flushBuffers() {
 		// Assertion to catch bugs in p-wrapping; both cannot be true.
 		if ($this->newLineCount > 0) {
-			$this->env->log("error/p-wrap", "Failed assertion in _flushBuffers: newline-count:", $this->newLineCount, "; buffered tokens: ", json_encode($this->nlWsTokens));
+			$this->manager->env["log"]("error/p-wrap", "Failed assertion in _flushBuffers: newline-count:", $this->newLineCount, "; buffered tokens: ", json_encode($this->nlWsTokens));
 		}
 		$resToks = $this->tokenBuffer->concat($this->nlWsTokens);
 		$this->resetBuffers();
@@ -254,7 +261,7 @@ class ParagraphWrapper extends TokenHandler {
 
 	// Handle NEWLINE tokens
 	public function onNewLineOrEOF($token) {
-		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "NL    |", function () {
+		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "NL    |", function () {
 			json_encode($token);
 		});
 		$l = $this->currLine;
@@ -294,7 +301,7 @@ class ParagraphWrapper extends TokenHandler {
 		$newLineCount = $this->newLineCount;
 		$nlTk = null;
 
-		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "        NL-count:", $newLineCount);
+		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "        NL-count:", $newLineCount);
 
 		if ($newLineCount >= 2 && !$this->inBlockElem) {
 			$this->closeOpenPTag($resToks);
@@ -343,12 +350,12 @@ class ParagraphWrapper extends TokenHandler {
 
 	public function onAny($token) {
 		global $blockElems, $antiBlockElems, $alwaysSuppress, $neverSuppress;
-		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "ANY   |", function () {
+		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "ANY   |", function () {
 			json_encode($token);
 		});
 		$res = null;
 		$tc = gettype($token) === 'string' ? 'String' : $token->getType();
-		if ($tc === "TagTk" && $token["name"] === 'pre' && !Util::isHTMLTag($token)) {
+		if ($tc === "TagTk" && $token->name === 'pre' && !Util::isHTMLTag($token)) {
 			if ($this->inBlockElem) {
 				array_push($this->currLine->tokens, ' ');
 				return array("tokens" => array());
