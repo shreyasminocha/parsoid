@@ -135,7 +135,7 @@ class MockTTM {
 		$output = $arguments[0];
 		for ($index = 1; $index < sizeof($arguments); $index++) {
             if (is_callable($arguments[$index])) {
-				$output = $output . ' ' . $arguments[$index];
+				$output = $output . ' ' . $arguments[$index]();
 			} else {
 				$output = $output . ' ' . $arguments[$index];
 			}
@@ -486,7 +486,7 @@ class MockTTM {
 										$token = new EndTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
 										break;
 									case "NlTk":
-										$token = new NlTk($jsTk['dataAttribs']['tsr']);
+										$token = new NlTk(isset($jsTk['dataAttribs']['tsr']) ? $jsTk['dataAttribs']['tsr'] : null);
 										break;
 									case "EOFTk":
 										$token = new EOFTk();

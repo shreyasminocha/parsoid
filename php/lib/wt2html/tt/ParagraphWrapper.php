@@ -27,12 +27,10 @@ function makeSet( $a ) {
 }
 
 // These are defined in the php parser's `BlockLevelPass`
-$blockElems = makeSet(array(
-	'TABLE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'PRE', 'P', 'UL', 'OL', 'DL')
-);
-$antiBlockElems = makeSet(array('TD', 'TH'));
-$alwaysSuppress = makeSet(array('TR', 'DT', 'DD', 'LI'));
-$neverSuppress = makeSet(array('CENTER', 'BLOCKQUOTE', 'DIV', 'HR', 'FIGURE'));
+$blockElems = makeSet([ 'TABLE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'PRE', 'P', 'UL', 'OL', 'DL' ]);
+$antiBlockElems = makeSet([ 'TD', 'TH' ]);
+$alwaysSuppress = makeSet([ 'TR', 'DT', 'DD', 'LI' ]);
+$neverSuppress = makeSet([ 'CENTER', 'BLOCKQUOTE', 'DIV', 'HR', 'FIGURE' ]);
 
 /**
  * @class
@@ -52,8 +50,8 @@ class ParagraphWrapper extends TokenHandler {
 		$this->inPre = false;
 		$this->hasOpenPTag = false;
 		$this->inBlockElem = false;
-		$this->tokenBuffer = array();
-		$this->nlWsTokens = array();
+		$this->tokenBuffer = [];
+		$this->nlWsTokens = [];
 		$this->newLineCount = 0;
 		$this->currLine = null;
 
@@ -127,8 +125,8 @@ class ParagraphWrapper extends TokenHandler {
 	}
 
 	public function resetBuffers() {
-		$this->tokenBuffer = array();
-		$this->nlWsTokens = array();
+		$this->tokenBuffer = [];
+		$this->nlWsTokens = [];
 		$this->newLineCount = 0;
 	}
 
@@ -136,14 +134,14 @@ class ParagraphWrapper extends TokenHandler {
 		if (isset($this->currLine) && isset($this->currLine["openMatch"]) || isset($this->currLine["closeMatch"])) {
 			$this->inBlockElem = !$this->currLine["closeMatch"];
 		}
-		$this->currLine = array(
-			"tokens" => array(),
+		$this->currLine = [
+			"tokens" => [],
 			"hasWrappableTokens" => false,
 			// These flags, along with `inBlockElem` are concepts from the
 			// php parser's `BlockLevelPass`.
 			"openMatch" => false,
 			"closeMatch" => false
-		);
+		];
 	}
 
 	public function _processBuffers($token, $flushCurrentLine) {
@@ -153,8 +151,8 @@ class ParagraphWrapper extends TokenHandler {
 			$res = array_merge($res, $this->currLine["tokens"]);
 			$this->resetCurrLine();
 		}
-		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
-			json_encode($res);
+		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($res) {
+			return json_encode($res);
 		});
 		$res["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
 		return $res;
@@ -167,8 +165,8 @@ class ParagraphWrapper extends TokenHandler {
 		}
 		$resToks = array_merge($this->tokenBuffer, $this->nlWsTokens);
 		$this->resetBuffers();
-		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
-			json_encode($resToks);
+		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($resToks) {
+			return json_encode($resToks);
 		});
 		$resToks["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
 		return $resToks;
@@ -228,8 +226,7 @@ class ParagraphWrapper extends TokenHandler {
 			$tplEndIndex = -1;
 			// Be careful not to expand template ranges unnecessarily.
 			// Look for open markers before closing.
-			for ($i = count($out) - 1;
-			     $i > -1; $i--) {
+			for ($i = count($out) - 1; $i > -1; $i--) {
 				$t = $out[$i];
 				if ($t->name === "meta") {
 					$typeOf = $t->getAttribute("typeof");
@@ -261,8 +258,8 @@ class ParagraphWrapper extends TokenHandler {
 
 	// Handle NEWLINE tokens
 	public function onNewLineOrEOF($token) {
-		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "NL    |", function () {
-			json_encode($token);
+		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "NL    |", function () use($token) {
+			return json_encode($token);
 		});
 		$l = $this->currLine;
 		if ($this->currLine["openMatch"] || $this->currLine["closeMatch"]) {
@@ -283,16 +280,16 @@ class ParagraphWrapper extends TokenHandler {
 			$this->closeOpenPTag($this->tokenBuffer);
 			$res = $this->processPendingNLs();
 			$this->reset();
-			$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
-				json_encode($res);
+			$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($res) {
+				return json_encode($res);
 			});
 			$res["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
-			return array("tokens" => $res);
+			return [ "tokens" => $res ];
 		} else {
 			$this->resetCurrLine();
 			$this->newLineCount++;
 			array_push($this->nlWsTokens, $token);
-			return array("tokens" => array());
+			return [ "tokens" => array() ];
 		}
 	}
 
@@ -350,15 +347,15 @@ class ParagraphWrapper extends TokenHandler {
 
 	public function onAny($token) {
 		global $blockElems, $antiBlockElems, $alwaysSuppress, $neverSuppress;
-		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "ANY   |", function () {
-			json_encode($token);
+		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "ANY   |", function () use($token) {
+			return json_encode($token);
 		});
 		$res = null;
 		$tc = Util::getType($token);
 		if ($tc === "TagTk" && $token->name === 'pre' && !Util::isHTMLTag($token)) {
 			if ($this->inBlockElem) {
 				array_push($this->currLine["tokens"], ' ');
-				return array("tokens" => array());
+				return [ "tokens" => [] ];
 			} else {
 				$this->manager->removeTransform(ParagraphWrapper::NEWLINE_RANK(), 'newline');
 				$this->inPre = true;
@@ -369,12 +366,12 @@ class ParagraphWrapper extends TokenHandler {
 				// flag.  The point of all this is that we want to close any open
 				// p-tags.
 				$this->currLine["openMatch"] = true;
-				return array("tokens" => $this->_processBuffers($token, true));
+				return [ "tokens" => $this->_processBuffers($token, true) ];
 			}
 		} else if ($tc === "EndTagTk" && $token->name === 'pre' && !Util::isHTMLTag($token)) {
 			if ($this->inBlockElem && !$this->inPre) {
 				// No pre-tokens inside block tags -- swallow it.
-				return array("tokens" => array());
+				return [ "tokens" => [] ];
 			} else {
 				if ($this->inPre) {
 					$this->manager->addTransform(function ($token) {
@@ -384,38 +381,38 @@ class ParagraphWrapper extends TokenHandler {
 					$this->inPre = false;
 				}
 				$this->currLine["closeMatch"] = true;
-				$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
-					json_encode($token);
+				$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($token) {
+					return json_encode($token);
 				});
-				$res = array($token);
+				$res = [ $token ];
 				$res["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
-				return array("tokens" => $res);
+				return [ "tokens" => $res ];
 			}
 		} else if ($tc === "EOFTk" || $this->inPre) {
-			$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
-				json_encode($token);
+			$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($token) {
+				return json_encode($token);
 			});
-			$res = array($token);
+			$res = [ $token ];
 			$res["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
-			return array("tokens" => $res);
+			return [ "tokens" => $res ];
 		} else if ($tc === "CommentTk" || $tc === "String" && preg_match('/^[\t ]*$/', $token) || Util::isEmptyLineMetaToken($token)) {
 			if ($this->newLineCount === 0) {
 				array_push($this->currLine["tokens"], $token);
 				// Since we have no pending newlines to trip us up,
 				// no need to buffer -- just flush everything
-				return array("tokens" => $this->_flushBuffers());
+				return [ "tokens" => $this->_flushBuffers() ];
 			} else {
 				// We are in buffering mode waiting till we are ready to
 				// process pending newlines.
 				array_push($this->nlWsTokens, $token);
-				return array("tokens" => array());
+				return [ "tokens" => [] ];
 			}
 		} else if ($tc !== "String" && Util::isSolTransparent($this->env, $token)) {
 			if ($this->newLineCount === 0) {
 				array_push($this->currLine["tokens"], $token);
 				// Since we have no pending newlines to trip us up,
 				// no need to buffer -- just flush everything
-				return array("tokens" => $this->_flushBuffers());
+				return [ "tokens" => $this->_flushBuffers() ];
 			} else if ($this->newLineCount === 1) {
 				// Swallow newline, whitespace, comments, and the current line
 				$this->tokenBuffer = $this->tokenBuffer->concat($this->nlWsTokens, $this->currLine["tokens"]);
@@ -425,9 +422,9 @@ class ParagraphWrapper extends TokenHandler {
 
 				// But, don't process the new token yet.
 				array_push($this->currLine["tokens"], $token);
-				return array("tokens" => array());
+				return [ "tokens" => [] ];
 			} else {
-				return array("tokens" => $this->_processBuffers($token, false));
+				return [ "tokens" => $this->_processBuffers($token, false) ];
 			}
 		} else {
 			$name = strtoupper(isset($token->name) ? $token->name : "");
@@ -438,7 +435,7 @@ class ParagraphWrapper extends TokenHandler {
 				$this->currLine["closeMatch"] = true;
 			}
 			$this->currLine["hasWrappableTokens"] = true;
-			return array("tokens" => $this->_processBuffers($token, false));
+			return [ "tokens" => $this->_processBuffers($token, false) ];
 		}
 	}
 }
