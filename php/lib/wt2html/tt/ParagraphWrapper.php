@@ -133,8 +133,8 @@ class ParagraphWrapper extends TokenHandler {
 	}
 
 	public function resetCurrLine() {
-		if (isset($this->currLine) && isset($this->currLine->openMatch) || isset($this->currLine->closeMatch)) {
-			$this->inBlockElem = !$this->currLine->closeMatch;
+		if (isset($this->currLine) && isset($this->currLine["openMatch"]) || isset($this->currLine["closeMatch"])) {
+			$this->inBlockElem = !$this->currLine["closeMatch"];
 		}
 		$this->currLine = array(
 			"tokens" => array(),
@@ -148,15 +148,15 @@ class ParagraphWrapper extends TokenHandler {
 
 	public function _processBuffers($token, $flushCurrentLine) {
 		$res = $this->processPendingNLs();
-		array_push($this->currLine->tokens, $token);
+		array_push($this->currLine["tokens"], $token);
 		if ($flushCurrentLine) {
-			$res = $res->concat($this->currLine->tokens);
+			$res = $res->concat($this->currLine["tokens"]);
 			$this->resetCurrLine();
 		}
-		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
+		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
 			json_encode($res);
 		});
-		$res->rank = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
+		$res["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
 		return $res;
 	}
 
@@ -167,10 +167,10 @@ class ParagraphWrapper extends TokenHandler {
 		}
 		$resToks = $this->tokenBuffer->concat($this->nlWsTokens);
 		$this->resetBuffers();
-		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
+		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
 			json_encode($resToks);
 		});
-		$resToks->rank = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
+		$resToks["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
 		return $resToks;
 	}
 
@@ -196,7 +196,7 @@ class ParagraphWrapper extends TokenHandler {
 			// Look for open markers before starting a p-tag.
 			for ($i = 0; $i < count($out); $i++) {
 				$t = $out[$i];
-				if ($t["name"] === "meta") {
+				if ($t->name === "meta") {
 					$typeOf = $t->getAttribute("typeof");
 					if (preg_match('/^mw:Transclusion$/', $typeOf)) {
 						// We hit a start tag and everything before it is sol-transparent.
@@ -231,7 +231,7 @@ class ParagraphWrapper extends TokenHandler {
 			for ($i = count($out) - 1;
 			     $i > -1; $i--) {
 				$t = $out[$i];
-				if ($t["name"] === "meta") {
+				if ($t->name === "meta") {
 					$typeOf = $t->getAttribute("typeof");
 					if (preg_match('/^mw:Transclusion$/', $typeOf)) {
 						// We hit a start tag and everything after it is sol-transparent.
@@ -265,15 +265,15 @@ class ParagraphWrapper extends TokenHandler {
 			json_encode($token);
 		});
 		$l = $this->currLine;
-		if ($this->currLine->openMatch || $this->currLine->closeMatch) {
+		if ($this->currLine["openMatch"] || $this->currLine["closeMatch"]) {
 			$this->closeOpenPTag($l->tokens);
-		} else if (!$this->inBlockElem && !$this->hasOpenPTag && $l->hasWrappableTokens) {
+		} else if (!$this->inBlockElem && !$this->hasOpenPTag && $l["hasWrappableTokens"]) {
 			$this->openPTag($l->tokens);
 		}
 
 		// Assertion to catch bugs in p-wrapping; both cannot be true.
 		if ($this->newLineCount > 0 && count($l->tokens) > 0) {
-			$this->env->log("error/p-wrap", "Failed assertion in onNewLineOrEOF: newline-count:", $this->newLineCount, "; current line tokens: ", json_encode($l->tokens));
+			$this->env["log"]("error/p-wrap", "Failed assertion in onNewLineOrEOF: newline-count:", $this->newLineCount, "; current line tokens: ", json_encode($l->tokens));
 		}
 
 		$this->tokenBuffer = $this->tokenBuffer->concat($l->tokens);
@@ -283,10 +283,10 @@ class ParagraphWrapper extends TokenHandler {
 			$this->closeOpenPTag($this->tokenBuffer);
 			$res = $this->processPendingNLs();
 			$this->reset();
-			$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
+			$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
 				json_encode($res);
 			});
-			$res->rank = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
+			$res["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
 			return array("tokens" => $res);
 		} else {
 			$this->resetCurrLine();
@@ -331,7 +331,7 @@ class ParagraphWrapper extends TokenHandler {
 			}
 		}
 
-		if ($this->currLine->openMatch || $this->currLine->closeMatch) {
+		if ($this->currLine["openMatch"] || $this->currLine["closeMatch"]) {
 			$this->closeOpenPTag($resToks);
 			if ($newLineCount === 1) {
 				array_push($resToks, $this->discardOneNlTk($resToks));
@@ -340,7 +340,7 @@ class ParagraphWrapper extends TokenHandler {
 
 		// Gather remaining ws and nl tokens
 
-		$resToks = $resToks->concat($this->nlWsTokens);
+		$resToks = array_merge($resToks, $this->nlWsTokens);
 
 		// reset buffers
 		$this->resetBuffers();
@@ -354,10 +354,10 @@ class ParagraphWrapper extends TokenHandler {
 			json_encode($token);
 		});
 		$res = null;
-		$tc = gettype($token) === 'string' ? 'String' : $token->getType();
+		$tc = Util::getType($token);
 		if ($tc === "TagTk" && $token->name === 'pre' && !Util::isHTMLTag($token)) {
 			if ($this->inBlockElem) {
-				array_push($this->currLine->tokens, ' ');
+				array_push($this->currLine["tokens"], ' ');
 				return array("tokens" => array());
 			} else {
 				$this->manager->removeTransform(ParagraphWrapper::NEWLINE_RANK(), 'newline');
@@ -368,10 +368,10 @@ class ParagraphWrapper extends TokenHandler {
 				// that index-pre is "never suppressing" and set the `closeMatch`
 				// flag.  The point of all this is that we want to close any open
 				// p-tags.
-				$this->currLine->openMatch = true;
+				$this->currLine["openMatch"] = true;
 				return array("tokens" => $this->_processBuffers($token, true));
 			}
-		} else if ($tc === "EndTagTk" && $token["name"] === 'pre' && !Util::isHTMLTag($token)) {
+		} else if ($tc === "EndTagTk" && $token->name === 'pre' && !Util::isHTMLTag($token)) {
 			if ($this->inBlockElem && !$this->inPre) {
 				// No pre-tokens inside block tags -- swallow it.
 				return array("tokens" => array());
@@ -383,24 +383,24 @@ class ParagraphWrapper extends TokenHandler {
 					, "ParagraphWrapper:onNewLine", ParagraphWrapper::NEWLINE_RANK(), 'newline');
 					$this->inPre = false;
 				}
-				$this->currLine->closeMatch = true;
-				$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
+				$this->currLine["closeMatch"] = true;
+				$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
 					json_encode($token);
 				});
 				$res = array($token);
-				$res->rank = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
+				$res["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
 				return array("tokens" => $res);
 			}
 		} else if ($tc === "EOFTk" || $this->inPre) {
-			$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
+			$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
 				json_encode($token);
 			});
 			$res = array($token);
-			$res->rank = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
+			$res["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
 			return array("tokens" => $res);
 		} else if ($tc === "CommentTk" || $tc === "String" && preg_match('/^[\t ]*$/', $token) || Util::isEmptyLineMetaToken($token)) {
 			if ($this->newLineCount === 0) {
-				array_push($this->currLine->tokens, $token);
+				array_push($this->currLine["tokens"], $token);
 				// Since we have no pending newlines to trip us up,
 				// no need to buffer -- just flush everything
 				return array("tokens" => $this->_flushBuffers());
@@ -412,32 +412,32 @@ class ParagraphWrapper extends TokenHandler {
 			}
 		} else if ($tc !== "String" && Util::isSolTransparent($this->env, $token)) {
 			if ($this->newLineCount === 0) {
-				array_push($this->currLine->tokens, $token);
+				array_push($this->currLine["tokens"], $token);
 				// Since we have no pending newlines to trip us up,
 				// no need to buffer -- just flush everything
 				return array("tokens" => $this->_flushBuffers());
 			} else if ($this->newLineCount === 1) {
 				// Swallow newline, whitespace, comments, and the current line
-				$this->tokenBuffer = $this->tokenBuffer->concat($this->nlWsTokens, $this->currLine->tokens);
+				$this->tokenBuffer = $this->tokenBuffer->concat($this->nlWsTokens, $this->currLine["tokens"]);
 				$this->newLineCount = 0;
 				$this->nlWsTokens = array();
 				$this->resetCurrLine();
 
 				// But, don't process the new token yet.
-				array_push($this->currLine->tokens, $token);
+				array_push($this->currLine["tokens"], $token);
 				return array("tokens" => array());
 			} else {
 				return array("tokens" => $this->_processBuffers($token, false));
 			}
 		} else {
-			$name = strtoupper($token["name"] || '');
-			if ($blockElems->has($name) && $tc !== "EndTagTk" || $antiBlockElems->has($name) && $tc === "EndTagTk" || $alwaysSuppress->has($name)) {
-				$this->currLine->openMatch = true;
+			$name = strtoupper($token->name ? $token->name : "");
+			if (isset($blockElems[$name]) && $tc !== "EndTagTk" || isset($antiBlockElems[$name]) && $tc === "EndTagTk" || isset($alwaysSuppress[$name])) {
+				$this->currLine["openMatch"] = true;
 			}
-			if ($blockElems->has($name) && $tc === "EndTagTk" || $antiBlockElems->has($name) && $tc !== "EndTagTk" || $neverSuppress->has($name)) {
-				$this->currLine->closeMatch = true;
+			if (isset($blockElems[$name]) && $tc === "EndTagTk" || isset($antiBlockElems[$name]) && $tc !== "EndTagTk" || isset($neverSuppress[$name])) {
+				$this->currLine["closeMatch"] = true;
 			}
-			$this->currLine->hasWrappableTokens = true;
+			$this->currLine["hasWrappableTokens"] = true;
 			return array("tokens" => $this->_processBuffers($token, false));
 		}
 	}

@@ -24,20 +24,30 @@ class Util {
 		return null;
 	}
 
+	public static function getType($token) {
+		return gettype($token) == 'string' ? 'String' : $token->getType();
+	}
+
 	public static function lookup( $kvs, $key ) {
 		$kv = self::lookupKV( $kvs, $key );
 		return $kv === null ? null : $kv->v;
 	}
 
+	public static function isBehaviorSwitch( $env, $token ) {
+		// FIXME: STUB!
+		return false;
+	}
+
 	public static function isEmptyLineMetaToken( $token ) {
-		return $token->getType() === "SelfclosingTagTk" &&
+		$tt = Util::getType($token);
+		return $tt === "SelfclosingTagTk" &&
 			$token->name === "meta" &&
 			$token->getAttribute("typeof") === "mw:EmptyLine";
 	}
 
-	public function isSolTransparentLinkTag( $token ) {
-		$tc = $token->getType();
-		return ($tc === $pd->SelfclosingTagTk || $tc === $pd->TagTk || $tc === $pd->EndTagTk) &&
+	public static function isSolTransparentLinkTag( $token ) {
+		$tc = Util::getType($token);
+		return ($tc === 'SelfclosingTagTk' || $tc === 'TagTk' || $tc === 'EndTagTk') &&
 			$token->name === 'link' &&
 			$this->solTransparentLinkRegexp->test($token->getAttribute('rel'));
 	}
@@ -47,21 +57,20 @@ class Util {
 	 * {@link DOMUtils.emitsSolTransparentSingleLineWT},
 	 * without the single line caveat.
 	 */
-	public function isSolTransparent( $env, $token ) {
-		$tc = $token->getType();
+	public static function isSolTransparent( $env, $token ) {
+		$tc = Util::getType($token);
 		if ($tc === "String") {
 			return preg_match('/^\s*$/', $token);
-			} else if ($this->isSolTransparentLinkTag($token)) {
+		} else if (Util::isSolTransparentLinkTag($token)) {
 			return true;
-		} else if ($tc === $pd->CommentTk) {
+		} else if ($tc === 'CommentTk') {
 			return true;
-		} else if ($this->isBehaviorSwitch($env, $token)) {
+		} else if (Util::isBehaviorSwitch($env, $token)) {
 			return true;
-		} else if ($tc !== $pd->SelfclosingTagTk || $token->name !== 'meta') {
+		} else if ($tc !== 'SelfclosingTagTk' || $token->name !== 'meta') {
 			return false;
 		} else {  // only metas left
-			return $token->dataAttribs->stx !== 'html';
+			return isset($token->dataAttribs["stx"]) && $token->dataAttribs["stx"] !== 'html';
 		}
 	}
-
 }
