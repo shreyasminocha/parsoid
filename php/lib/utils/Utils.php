@@ -45,11 +45,13 @@ class Util {
 			$token->getAttribute("typeof") === "mw:EmptyLine";
 	}
 
+	private static $solTransparentLinkRegexp = "/(?:^|\s)mw:PageProp\/(?:Category|redirect|Language)(?=$|\s)/";
+
 	public static function isSolTransparentLinkTag( $token ) {
 		$tc = Util::getType($token);
 		return ($tc === 'SelfclosingTagTk' || $tc === 'TagTk' || $tc === 'EndTagTk') &&
 			$token->name === 'link' &&
-			$this->solTransparentLinkRegexp->test($token->getAttribute('rel'));
+			preg_match(self::$solTransparentLinkRegexp, $token->getAttribute('rel'));
 	}
 
 	/**
@@ -73,4 +75,31 @@ class Util {
 			return isset($token->dataAttribs["stx"]) && $token->dataAttribs["stx"] !== 'html';
 		}
 	}
+
+	/**
+	 * Determine whether the current token was an HTML tag in wikitext.
+	 *
+	 * @return {boolean}
+	 */
+	public static function isHTMLTag( $token ) {
+		global $console;
+		switch ( Util::getType($token) ) {
+			case "String":
+			case "NlTk":
+			case "CommentTk":
+			case "EOFTk":
+				return false;
+			case "TagTk":
+			case "EndTagTk":
+			case "SelfclosingTagTk":
+				if (isset($token->dataAttribs["stx"]))
+					return $token->dataAttribs["stx"] === 'html';
+				else return false;
+			default:
+				$console->assert(false, 'Unhandled token type');
+		}
+	}
+
 }
+
+?>

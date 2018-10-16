@@ -150,7 +150,7 @@ class ParagraphWrapper extends TokenHandler {
 		$res = $this->processPendingNLs();
 		array_push($this->currLine["tokens"], $token);
 		if ($flushCurrentLine) {
-			$res = $res->concat($this->currLine["tokens"]);
+			$res = array_merge($res, $this->currLine["tokens"]);
 			$this->resetCurrLine();
 		}
 		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
@@ -165,7 +165,7 @@ class ParagraphWrapper extends TokenHandler {
 		if ($this->newLineCount > 0) {
 			$this->manager->env["log"]("error/p-wrap", "Failed assertion in _flushBuffers: newline-count:", $this->newLineCount, "; buffered tokens: ", json_encode($this->nlWsTokens));
 		}
-		$resToks = $this->tokenBuffer->concat($this->nlWsTokens);
+		$resToks = array_merge($this->tokenBuffer, $this->nlWsTokens);
 		$this->resetBuffers();
 		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () {
 			json_encode($resToks);
@@ -266,17 +266,17 @@ class ParagraphWrapper extends TokenHandler {
 		});
 		$l = $this->currLine;
 		if ($this->currLine["openMatch"] || $this->currLine["closeMatch"]) {
-			$this->closeOpenPTag($l->tokens);
-		} else if (!$this->inBlockElem && !$this->hasOpenPTag && $l["hasWrappableTokens"]) {
+			$this->closeOpenPTag($l["tokens"]);
+		} else if (!isset($this->inBlockElem) && !isset($this->hasOpenPTag) && isset($l["hasWrappableTokens"])) {
 			$this->openPTag($l->tokens);
 		}
 
 		// Assertion to catch bugs in p-wrapping; both cannot be true.
-		if ($this->newLineCount > 0 && count($l->tokens) > 0) {
+		if ($this->newLineCount > 0 && count($l["tokens"]) > 0) {
 			$this->env["log"]("error/p-wrap", "Failed assertion in onNewLineOrEOF: newline-count:", $this->newLineCount, "; current line tokens: ", json_encode($l->tokens));
 		}
 
-		$this->tokenBuffer = $this->tokenBuffer->concat($l->tokens);
+		$this->tokenBuffer = array_merge($this->tokenBuffer, $l["tokens"]);
 
 		if ($token->getType() === "EOFTk") {
 			array_push($this->nlWsTokens, $token);
@@ -430,7 +430,7 @@ class ParagraphWrapper extends TokenHandler {
 				return array("tokens" => $this->_processBuffers($token, false));
 			}
 		} else {
-			$name = strtoupper($token->name ? $token->name : "");
+			$name = strtoupper(isset($token->name) ? $token->name : "");
 			if (isset($blockElems[$name]) && $tc !== "EndTagTk" || isset($antiBlockElems[$name]) && $tc === "EndTagTk" || isset($alwaysSuppress[$name])) {
 				$this->currLine["openMatch"] = true;
 			}
