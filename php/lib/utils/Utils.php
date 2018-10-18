@@ -92,8 +92,8 @@ class Util {
 			case "TagTk":
 			case "EndTagTk":
 			case "SelfclosingTagTk":
-				if (isset($token->dataAttribs["stx"]))
-					return $token->dataAttribs["stx"] === 'html';
+				if (isset($token->dataAttribs->stx))
+					return $token->dataAttribs->stx === 'html';
 				else return false;
 			default:
 				$console->assert(false, 'Unhandled token type');

@@ -241,7 +241,7 @@ class TagTk extends Token {
 		/** @type {KV[]} */
 		$this->attribs = $attribs;
 		/** @type {Object} */
-		$this->dataAttribs = $dataAttribs;
+		$this->dataAttribs = ($dataAttribs == []) ? (object)[] : $dataAttribs;
     }
 }
 
@@ -264,7 +264,7 @@ class EndTagTk extends Token {
 			/** @type {KV[]} */
 		$this->attribs = $attribs;
 			/** @type {Object} */
-		$this->dataAttribs = $dataAttribs;
+		$this->dataAttribs = ($dataAttribs == []) ? (object)[] : $dataAttribs;
 	}
 }
 
@@ -286,7 +286,7 @@ class SelfclosingTagTk extends Token {
 			/** @type {KV[]} */
 		$this->attribs = $attribs;
 			/** @type {Object} */
-		$this->dataAttribs = $dataAttribs;
+		$this->dataAttribs = ($dataAttribs == []) ? (object)[] : $dataAttribs;
 	}
 }
 
@@ -299,12 +299,14 @@ class NlTk extends Token {
 	/**
 	 * @param {Array} tsr The TSR of the newline(s).
 	 */
-	public function __construct($tsr) {
-		$this->name = "";
+	public function __construct($tsr, $dataAttribs) {
 		$this->type = "NlTk";
 		if (isset($tsr)) {
 			/** @type {Object} */
 			$this->dataAttribs = ["tsr"=>$tsr];
+		} else
+		if (isset($dataAttribs)) {
+			$this->dataAttribs = ($dataAttribs == []) ? (object)[] : $dataAttribs;
 		}
 	}
 }
@@ -334,7 +336,6 @@ class CommentTk extends Token {
 	/* -------------------- EOFTk -------------------- */
 class EOFTk extends Token {
 	public function __construct() {
-		$this->name = "";
 		$this->type = "EOFTk";
 	}
 }

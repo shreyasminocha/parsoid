@@ -290,7 +290,7 @@ class MockTTM {
 					break;
 				case '[':	// desired result json string for test result verification
 					if (isset($result) && sizeof($result['tokens']) !== 0) {
-						$stringResult = json_encode($result['tokens']);
+						$stringResult = json_encode($result['tokens'], JSON_UNESCAPED_SLASHES);
 						# print "SR  : $stringResult\n";
 						# print "LINE: $line\n";
 						if ($stringResult === $line) {
@@ -330,7 +330,7 @@ class MockTTM {
 								$token = new EndTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
 								break;
 							case "NlTk":
-								$token = new NlTk($jsTk['dataAttribs']['tsr']);
+								$token = new NlTk($jsTk['dataAttribs']['tsr'], $jsTk['dataAttribs']);
 								break;
 							case "EOFTk":
 								$token = new EOFTk();
@@ -447,7 +447,7 @@ class MockTTM {
 					$line = substr($testLines[($pipeLines[$index])[$element]], 36);
 					switch ($line{0}) {
 						case '[':	// desired result json string for test result verification
-							$stringResult = json_encode($result['tokens']);
+							$stringResult = json_encode($result['tokens'], JSON_UNESCAPED_SLASHES);
 							# print "SR  : $stringResult\n";
 							# print "LINE: $line\n";
 							if ($stringResult === $line) {
@@ -486,7 +486,7 @@ class MockTTM {
 										$token = new EndTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
 										break;
 									case "NlTk":
-										$token = new NlTk(isset($jsTk['dataAttribs']['tsr']) ? $jsTk['dataAttribs']['tsr'] : null);
+										$token = new NlTk(isset($jsTk['dataAttribs']['tsr']) ? $jsTk['dataAttribs']['tsr'] : null, $jsTk['dataAttribs']);
 										break;
 									case "EOFTk":
 										$token = new EOFTk();
