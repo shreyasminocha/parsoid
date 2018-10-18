@@ -8,7 +8,9 @@ namespace Parsoid\Lib\Wt2html\TT;
 
 require_once (__DIR__.'/TokenHandler.php');
 require_once (__DIR__.'/../parser.defines.php');
+require_once (__DIR__.'/../../utils/Utils.php');
 
+use Parsoid\Lib\Utils\Util;
 use Parsoid\Lib\Wt2html\TagTk;
 use Parsoid\Lib\Wt2html\EndTagTk;
 use Parsoid\Lib\Wt2html\SelfclosingTagTk;
@@ -128,10 +130,17 @@ class QuoteTransformer extends TokenHandler {
 			return (!isset($this->isActive) ? " ---> " : "") . json_encode($token);
 		});
 
+		if (Util::getType($token) !== 'String' &&
+			isset($token->dataAttribs->stx) &&
+			$token->dataAttribs->stx === 'html' &&
+			($token->name === 'td' || $token->name === 'th')
+		) {
+			return [ "tokens" => [$token] ];
+		}
 
 		if (!$this->isActive) {
 		// Nothing to do, quick abort.
-			return [ "token" => $token ];
+			return [ "tokens" => [$token] ];
 		}
 	// token.rank = this.quoteAndNewlineRank;
 
