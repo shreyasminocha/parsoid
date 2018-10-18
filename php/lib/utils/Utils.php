@@ -72,7 +72,7 @@ class Util {
 		} else if ($tc !== 'SelfclosingTagTk' || $token->name !== 'meta') {
 			return false;
 		} else {  // only metas left
-			return isset($token->dataAttribs["stx"]) && $token->dataAttribs["stx"] !== 'html';
+			return isset($token->dataAttribs->stx) && $token->dataAttribs->stx !== 'html';
 		}
 	}
 

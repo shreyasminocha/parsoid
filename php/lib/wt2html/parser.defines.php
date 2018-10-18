@@ -241,7 +241,7 @@ class TagTk extends Token {
 		/** @type {KV[]} */
 		$this->attribs = $attribs;
 		/** @type {Object} */
-		$this->dataAttribs = ($dataAttribs == []) ? (object)[] : $dataAttribs;
+		$this->dataAttribs = (object)$dataAttribs;
     }
 }
 
@@ -264,7 +264,7 @@ class EndTagTk extends Token {
 			/** @type {KV[]} */
 		$this->attribs = $attribs;
 			/** @type {Object} */
-		$this->dataAttribs = ($dataAttribs == []) ? (object)[] : $dataAttribs;
+		$this->dataAttribs = (object)$dataAttribs;
 	}
 }
 
@@ -286,7 +286,7 @@ class SelfclosingTagTk extends Token {
 			/** @type {KV[]} */
 		$this->attribs = $attribs;
 			/** @type {Object} */
-		$this->dataAttribs = ($dataAttribs == []) ? (object)[] : $dataAttribs;
+		$this->dataAttribs = (object)$dataAttribs;
 	}
 }
 
@@ -306,7 +306,7 @@ class NlTk extends Token {
 			$this->dataAttribs = ["tsr"=>$tsr];
 		} else
 		if (isset($dataAttribs)) {
-			$this->dataAttribs = ($dataAttribs == []) ? (object)[] : $dataAttribs;
+			$this->dataAttribs = (object)$dataAttribs;
 		}
 	}
 }

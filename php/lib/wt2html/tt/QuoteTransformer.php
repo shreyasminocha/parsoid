@@ -241,10 +241,10 @@ class QuoteTransformer extends TokenHandler {
 	// we're going to convert it to a single plain text ' plus an italic tag
 		$this->chunks[$i - 1][] = "'";
 		$oldbold = $this->chunks[$i][0];
-		$tsr = $oldbold->dataAttribs ? $oldbold->dataAttribs["tsr"] : null;
+		$tsr = $oldbold->dataAttribs && isset($oldbold->dataAttribs->tsr) ? $oldbold->dataAttribs->tsr : null;
 		if ($tsr) {
 			$tsr = [ $tsr[0] + 1, $tsr[1] ];
-			}
+		}
 		$newbold = new SelfclosingTagTk('mw-quote', [], [ "tsr" => $tsr ]);
 		$newbold->setAttribute("value", "''"); // italic!
 		$this->chunks[$i] = [ $newbold ];
@@ -354,7 +354,7 @@ class QuoteTransformer extends TokenHandler {
 		$result = [];
 		$oldtag = $this->chunks[$chunk][0];
 		// make tsr
-		$tsr = $oldtag->dataAttribs ? $oldtag->dataAttribs["tsr"] : null;
+		$tsr = $oldtag->dataAttribs && isset($oldtag->dataAttribs->tsr) ? $oldtag->dataAttribs->tsr : null;
 		$startpos = $tsr ? $tsr[0] : null;
 		$endpos = $tsr ? $tsr[1] : null;
 		for ($i = 0; $i < sizeof($tags); $i++) {
@@ -364,11 +364,11 @@ class QuoteTransformer extends TokenHandler {
 				} else if ($i === 2 && $ignoreBogusTwo) {
 					$tags[$i]->dataAttribs["autoInsertedStart"] = true;
 				} else if ($tags[$i]->name === 'b') {
-					$tags[$i]->dataAttribs["tsr"] = [ $startpos, $startpos + 3 ];
-					$startpos = $tags[$i]->dataAttribs["tsr"][1];
+					$tags[$i]->dataAttribs->tsr = [ $startpos, $startpos + 3 ];
+					$startpos = $tags[$i]->dataAttribs->tsr[1];
 				} else if ($tags[$i]->name === 'i') {
-					$tags[$i]->dataAttribs["tsr"] = [ $startpos, $startpos + 2 ];
-					$startpos = $tags[$i]->dataAttribs["tsr"][1];
+					$tags[$i]->dataAttribs->tsr = [ $startpos, $startpos + 2 ];
+					$startpos = $tags[$i]->dataAttribs->tsr[1];
 				} else { assert(false); }
 			}
 			$this->last[$tags[$i]->name] = ($tags[$i]->getType() === "EndTagTk") ? null : $tags[$i];
