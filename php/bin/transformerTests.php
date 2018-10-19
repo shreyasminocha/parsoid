@@ -290,7 +290,7 @@ class MockTTM {
 					break;
 				case '[':	// desired result json string for test result verification
 					if (isset($result) && sizeof($result['tokens']) !== 0) {
-						$stringResult = json_encode($result['tokens'], JSON_UNESCAPED_SLASHES);
+						$stringResult = json_encode($result['tokens'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 						# print "SR  : $stringResult\n";
 						# print "LINE: $line\n";
 						if ($stringResult === $line) {
@@ -447,7 +447,7 @@ class MockTTM {
 					$line = substr($testLines[($pipeLines[$index])[$element]], 36);
 					switch ($line{0}) {
 						case '[':	// desired result json string for test result verification
-							$stringResult = json_encode($result['tokens'], JSON_UNESCAPED_SLASHES);
+							$stringResult = json_encode($result['tokens'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 							# print "SR  : $stringResult\n";
 							# print "LINE: $line\n";
 							if ($stringResult === $line) {
