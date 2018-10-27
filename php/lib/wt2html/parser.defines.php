@@ -324,7 +324,6 @@ class CommentTk extends Token {
 	 * @param {Object} dataAttribs data-parsoid object.
 	 */
 	public function __construct($value, $dataAttribs) {
-		$this->name = "";
 		$this->type = "CommentTk";
 		/** @type {string} */
 		$this->value = $value;

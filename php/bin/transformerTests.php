@@ -340,7 +340,7 @@ class MockTTM {
 							case "EOFTk":
 								$token = new EOFTk();
 								break;
-							case "COMMENT":
+							case "CommentTk":
 								$token = new CommentTk($jsTk["value"], $jsTk['dataAttribs']);
 								break;
 						}
@@ -495,7 +495,7 @@ class MockTTM {
 								case "EOFTk":
 									$token = new EOFTk();
 									break;
-								case "COMMENT":
+								case "CommentTk":
 									$token = new CommentTk($jsTk["value"], $jsTk['dataAttribs']);
 									break;
 							}
