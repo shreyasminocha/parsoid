@@ -343,22 +343,20 @@ class MockTTM {
 
 					# print "PROCESSING $line\n";
 					$startTime = microtime(true);
-					$res = [ 'token' => $token ];
 					$ts = $this->getTransforms($token, 2.0);
 
 					// Push the token through the transformations till it morphs
 					$j = $ts['first'];
 					$this->pipelineModified = false;
 					$numTransforms = sizeof($ts['transforms']);
-					while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"]) && !$this->pipelineModified) {
+					while ($j < $numTransforms && !$this->pipelineModified) {
 						$transformer = $ts['transforms'][$j];
 						if ($transformerName === substr($transformer["name"], 0, strlen($transformerName))) {
 							// Transform the token.
-							$res = $transformer["transform"]($token, $this, null);
-							if (isset($res['tokens'])) {
-								$result['tokens'] = array_merge($result['tokens'], $res['tokens']);
-							} else if (isset($res['token']) && $res['token'] !== $token) {
-								$result['tokens'][] = $res['token'];
+							$result = $res = $transformer["transform"]($token, $this, null);
+							$resT = isset($res['tokens']) && !isset($res["tokens"]["rank"]) && count($res["tokens"]) === 1 ? $res["tokens"][0] : null;
+							if ($resT !== $token) {
+								break;
 							}
 						}
 						$j++;
@@ -499,21 +497,19 @@ class MockTTM {
 
 							# print "PROCESSING $line\n";
 							$startTime = microtime(true);
-							$res = [ 'token' => $token ];
 							$ts = $this->getTransforms($token, 2.0);
 
 							// Push the token through the transformations till it morphs
 							$j = $ts['first'];
 							$this->pipelineModified = false;
 							$numTransforms = sizeof($ts['transforms']);
-							while ($j < $numTransforms && isset($res["token"]) && ($token === $res["token"]) && !$this->pipelineModified) {
+							while ($j < $numTransforms && !$this->pipelineModified) {
 								$transformer = $ts['transforms'][$j];
 								// Transform the token.
-								$res = $transformer["transform"]($token, $this, null);
-								if (isset($res['tokens'])) {
-									$result['tokens'] = array_merge($result['tokens'], $res['tokens']);
-								} else if (isset($res['token']) && $res['token'] !== $token) {
-									$result['tokens'][] = $res['token'];
+								$result = $res = $transformer["transform"]($token, $this, null);
+								$resT = isset($res['tokens']) && !isset($res["tokens"]["rank"]) && count($res["tokens"]) === 1 ? $res["tokens"][0] : null;
+								if ($resT !== $token) {
+									break;
 								}
 								$j++;
 							}
