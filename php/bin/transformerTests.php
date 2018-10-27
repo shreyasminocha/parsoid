@@ -91,7 +91,12 @@ function makeMap( $a ) {
 function kvsFromArray( $a ) {
 	$kvs = [];
 	foreach ( $a as $e ) {
-		$kvs[] = new KV($e["k"], $e["v"]);
+		$kvs[] = new KV(
+			$e["k"],
+			$e["v"],
+			isset($e["srcOffsets"]) ? $e["srcOffsets"] : null,
+			isset($e["vsrc"]) ? $e["vsrc"] : null
+		);
 	};
 	return $kvs;
 }
