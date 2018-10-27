@@ -379,18 +379,16 @@ class MockTTM {
 		$LineToPipeMap = array();
 		$LineToPipeMap = array_pad($LineToPipeMap, $numberOfTextLines, 0);
 		for ($i = 0; $i < $numberOfTextLines; ++$i) {
-			$number = substr($lines[$i], 0, 4);
-			preg_match('/\\d+/', $number, $number);
-			$number = implode("", $number);
-			if (ctype_digit($number)) {
-				$pipe = intval($number, 10);    // pipeline ID's should not exceed 9999
+			preg_match('/(\d+)/', substr($lines[$i], 0, 4), $matches);
+			if (sizeof($matches) > 0) {
+				$pipe = $matches[0];
 				if ($maxPipelineID < $pipe) {
 					$maxPipelineID = $pipe;
 				}
 			} else {
 				$pipe = NAN;
-				$LineToPipeMap[$i] = $pipe;
 			}
+			$LineToPipeMap[$i] = $pipe;
 		}
 		$pipelines = array();
 		$pipelines = array_pad($pipelines, $maxPipelineID + 1, []);
