@@ -420,103 +420,105 @@ class MockTTM {
 				$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
 				$testLines = explode("\n", $testFile);
 				$pipeLines = self::CreatePipelines($testLines);
-				$pipeLinesLength = sizeof($pipeLines);
+				$numPipelines = sizeof($pipeLines);
 				$cachedTestLines = $testLines;
 				$cachedPipeLines = $pipeLines;
-				$cachedPipeLinesLength = $pipeLinesLength;
+				$cachedPipeLinesLength = $numPipelines;
 			} else {
 				$testLines = $cachedTestLines;
 				$pipeLines = $cachedPipeLines;
-				$pipeLinesLength = $cachedPipeLinesLength;
+				$numPipelines = $cachedPipeLinesLength;
 			}
 		} else {
 			$testFile = file_get_contents($commandLine->inputFile);
 			$testFile = mb_convert_encoding($testFile, 'UTF-8', mb_detect_encoding($testFile, 'UTF-8, ISO-8859-1', true));
 			$testLines = explode("\n", $testFile);
 			$pipeLines = self::CreatePipelines($testLines);
-			$pipeLinesLength = sizeof($pipeLines);
+			$numPipelines = sizeof($pipeLines);
 		}
 
-		for ($index = 0; $index < $pipeLinesLength; $index++) {
-			if (isset($pipeLines[$index])) {
-				$tokenTransformer->manager->pipelineId = $index;
-				$pipeLength = sizeof($pipeLines[$index]);
-				for ($element = 0; $element < $pipeLength; $element++) {
-					$line = substr($testLines[($pipeLines[$index])[$element]], 36);
-					switch ($line{0}) {
-						case '[':	// desired result json string for test result verification
-							$stringResult = json_encode($result['tokens'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-							# print "SR  : $stringResult\n";
-							# print "LINE: $line\n";
-							if ($stringResult === $line) {
-								if(!isset($commandLine->timingMode)) {
-									$console->log("line " . (($pipeLines[$index])[$element] + 1) . " ==> passed\n");
-								}
-							} else {
-								$numFailures++;
-								$console->log("line " . (($pipeLines[$index])[$element] + 1) . " ==> failed\n");
-								$console->log("line to debug => " . $line . "\n");
-								$console->log("result line ===> " . $stringResult . "\n");
-							}
-							$result = null;
-							break;
-						case '{':
-						default:
-							if (!isset($result)) {
-								$result = [ 'tokens' => [] ];
-							}
-							$jsTk = json_decode($line, true);
-							if (gettype($jsTk) === "string") {
-								$token = $jsTk;
-							} else {
-								switch($jsTk['type']) {
-									case "SelfclosingTagTk":
-										$token = new SelfclosingTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
-										// HACK!
-										if (isset($jsTk['value'])) {
-											$token->addAttribute("value", $jsTk['value']);
-										}
-										break;
-									case "TagTk":
-										$token = new TagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
-										break;
-									case "EndTagTk":
-										$token = new EndTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
-										break;
-									case "NlTk":
-										$token = new NlTk(isset($jsTk['dataAttribs']['tsr']) ? $jsTk['dataAttribs']['tsr'] : null, $jsTk['dataAttribs']);
-										break;
-									case "EOFTk":
-										$token = new EOFTk();
-										break;
-									case "COMMENT":
-										$token = new CommentTk($jsTk["value"], $jsTk['dataAttribs']);
-										break;
-								}
-							}
+		for ($i = 0; $i < $numPipelines; $i++) {
+			if (!isset($pipeLines[$i])) {
+				continue;
+			}
 
-							# print "PROCESSING $line\n";
-							$startTime = microtime(true);
-							$ts = $this->getTransforms($token, 2.0);
-
-							// Push the token through the transformations till it morphs
-							$j = $ts['first'];
-							$this->pipelineModified = false;
-							$numTransforms = sizeof($ts['transforms']);
-							while ($j < $numTransforms && !$this->pipelineModified) {
-								$transformer = $ts['transforms'][$j];
-								// Transform the token.
-								$result = $res = $transformer["transform"]($token, $this, null);
-								$resT = isset($res['tokens']) && !isset($res["tokens"]["rank"]) && count($res["tokens"]) === 1 ? $res["tokens"][0] : null;
-								if ($resT !== $token) {
+			$tokenTransformer->manager->pipelineId = $i;
+			$p = $pipeLines[$i];
+			$pLen = sizeof($p);
+			for ($element = 0; $element < $pLen; $element++) {
+				$line = substr($testLines[$p[$element]], 36);
+				switch ($line{0}) {
+					case '[':	// desired result json string for test result verification
+						$stringResult = json_encode($result['tokens'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+						# print "SR  : $stringResult\n";
+						if ($stringResult === $line) {
+							if(!isset($commandLine->timingMode)) {
+								$console->log("line " . ($p[$element] + 1) . " ==> passed\n");
+							}
+						} else {
+							$numFailures++;
+							$console->log("line " . ($p[$element] + 1) . " ==> failed\n");
+							$console->log("line to debug => " . $line . "\n");
+							$console->log("result line ===> " . $stringResult . "\n");
+						}
+						$result = null;
+						break;
+					case '{':
+					default:
+						if (!isset($result)) {
+							$result = [ 'tokens' => [] ];
+						}
+						$jsTk = json_decode($line, true);
+						if (gettype($jsTk) === "string") {
+							$token = $jsTk;
+						} else {
+							switch($jsTk['type']) {
+								case "SelfclosingTagTk":
+									$token = new SelfclosingTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
+									// HACK!
+									if (isset($jsTk['value'])) {
+										$token->addAttribute("value", $jsTk['value']);
+									}
 									break;
-								}
-								$j++;
+								case "TagTk":
+									$token = new TagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
+									break;
+								case "EndTagTk":
+									$token = new EndTagTk($jsTk['name'], kvsFromArray($jsTk['attribs']), $jsTk['dataAttribs']);
+									break;
+								case "NlTk":
+									$token = new NlTk(isset($jsTk['dataAttribs']['tsr']) ? $jsTk['dataAttribs']['tsr'] : null, $jsTk['dataAttribs']);
+									break;
+								case "EOFTk":
+									$token = new EOFTk();
+									break;
+								case "COMMENT":
+									$token = new CommentTk($jsTk["value"], $jsTk['dataAttribs']);
+									break;
 							}
-							$this->tokenTime += (microtime(true) - $startTime);
+						}
 
-							break;
-					}
+						# print "PROCESSING $line\n";
+						$startTime = microtime(true);
+						$ts = $this->getTransforms($token, 2.0);
+
+						// Push the token through the transformations till it morphs
+						$j = $ts['first'];
+						$this->pipelineModified = false;
+						$numTransforms = sizeof($ts['transforms']);
+						while ($j < $numTransforms && !$this->pipelineModified) {
+							$transformer = $ts['transforms'][$j];
+							// Transform the token.
+							$result = $res = $transformer["transform"]($token, $this, null);
+							$resT = isset($res['tokens']) && !isset($res["tokens"]["rank"]) && count($res["tokens"]) === 1 ? $res["tokens"][0] : null;
+							if ($resT !== $token) {
+								break;
+							}
+							$j++;
+						}
+						$this->tokenTime += (microtime(true) - $startTime);
+
+						break;
 				}
 			}
 		}
@@ -553,7 +555,7 @@ class MockTTM {
 function selectTestType($commandLine, $manager, $handler) {
 	$iterator = 1;
 	$numFailures = 0;
-	if(isset($commandLine->timingMode)) {
+	if (isset($commandLine->timingMode)) {
 		$iterator = 10000;
 	}
 	while ($iterator--) {
