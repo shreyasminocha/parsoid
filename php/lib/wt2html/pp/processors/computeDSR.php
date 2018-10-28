@@ -2,8 +2,8 @@
 
 namespace Parsoid\Lib\Wt2Html\PP\Processors;
 
-require_once "lib/config/WikitextConstants.php";
-require_once "lib/utils/DU.php";
+require_once __DIR__."/../../../config/WikitextConstants.php";
+require_once __DIR__."/../../../utils/DU.php";
 
 use Parsoid\Lib\Config\WikitextConstants;
 use Parsoid\Lib\Utils\DU;
