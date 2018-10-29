@@ -19,7 +19,7 @@ class KV {
 	 * @param {any} v
 	 * @param {Array} srcOffsets The source offsets.
 	 */
-	public function __construct($k, $v, $srcOffsets = null) {
+	public function __construct($k, $v, $srcOffsets = null, $vsrc = null) {
 		/** Key. */
 		$this->k = $k;
 		/** Value. */
@@ -27,6 +27,9 @@ class KV {
 		if ($srcOffsets) {
 			/** The source offsets. */
 			$this->srcOffsets = $srcOffsets;
+		}
+		if ($vsrc) {
+			$this->vsrc = $vsrc;
 		}
 	}
 }
@@ -321,7 +324,6 @@ class CommentTk extends Token {
 	 * @param {Object} dataAttribs data-parsoid object.
 	 */
 	public function __construct($value, $dataAttribs) {
-		$this->name = "";
 		$this->type = "CommentTk";
 		/** @type {string} */
 		$this->value = $value;

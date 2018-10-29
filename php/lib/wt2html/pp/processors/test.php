@@ -2,17 +2,18 @@
 
 namespace Parsoid\Lib\Wt2Html\PP\Processors;
 
-require_once '../../../../vendor/autoload.php';
+require_once __DIR__.'/../../../../vendor/autoload.php';
 
 use RemexHtml\DOM;
 use RemexHtml\Tokenizer;
 use RemexHtml\TreeBuilder;
 use RemexHtml\Serializer;
 
-require_once "../../../config/Env.php";
-require_once "../../../config/WikitextConstants.php";
-require_once "../../../utils/DU.php";
+require_once __DIR__."/../../../config/Env.php";
+require_once __DIR__."/../../../config/WikitextConstants.php";
+require_once __DIR__."/../../../utils/DU.php";
 require_once "computeDSR.php";
+require_once "wrapSections.php";
 require_once "cleanupFormattingTagFixup.php";
 
 use Parsoid\Lib\Config\Env;
@@ -69,6 +70,9 @@ function test( $argc, $argv, $dumpDOM = false ) {
 		case 'cleanupFormattingTagFixup' :
 			cleanupFormattingTagFixup( $dom->getElementsByTagName('body')->item(0), $env );
 			break;
+		case 'wrapSections' :
+			wrapSections( $dom->getElementsByTagName('body')->item(0), $env, null );
+			break;
 	}
 	$time += microtime( true );
 
@@ -79,4 +83,4 @@ function test( $argc, $argv, $dumpDOM = false ) {
 	}
 }
 
-test( $argc, $argv );
+test( $argc, $argv, false );

@@ -73,7 +73,7 @@ class QuoteTransformer extends TokenHandler {
  * Handle QUOTE tags. These are collected in italic/bold lists depending on
  * the length of quote string. Actual analysis and conversion to the
  * appropriate tag tokens is deferred until the next NEWLINE token triggers
- * onNewLine.
+ * processQuotes.
  */
 	public function onQuote($token, $tokenManager, $prevToken) {
 		#var_dump($token);
@@ -82,17 +82,17 @@ class QuoteTransformer extends TokenHandler {
 		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "QUOTE |", json_encode($token));
 
 		if (!$this->isActive) {
-			$this->manager->addTransform([$this, 'onNewLine'],
-				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'newline');
+			$this->manager->addTransform([$this, 'processQuotes'],
+				'QuoteTransformer:processQuotes', self::quoteAndNewlineRank, 'newline');
 			// Treat 'th' just the same as a newline
-			$this->manager->addTransform([$this, 'onNewLine'],
-				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'tag', 'td');
+			$this->manager->addTransform([$this, 'processQuotes'],
+				'QuoteTransformer:processQuotes', self::quoteAndNewlineRank, 'tag', 'td');
 			// Treat 'td' just the same as a newline
-			$this->manager->addTransform([$this, 'onNewLine'],
-				'QuoteTransformer:onNewLine', self::quoteAndNewlineRank, 'tag', 'th');
+			$this->manager->addTransform([$this, 'processQuotes'],
+				'QuoteTransformer:processQuotes', self::quoteAndNewlineRank, 'tag', 'th');
 			// Treat end-of-input just the same as a newline
-			$this->manager->addTransform([$this, 'onNewLine'],
-				'QuoteTransformer:onNewLine:end', self::quoteAndNewlineRank, 'end');
+			$this->manager->addTransform([$this, 'processQuotes'],
+				'QuoteTransformer:processQuotes:end', self::quoteAndNewlineRank, 'end');
 			// Register for any token if not yet active
 			$this->manager->addTransform([$this, 'onAny'],
 				'QuoteTransformer:onAny', self::anyRank, 'any', null);
@@ -125,7 +125,7 @@ class QuoteTransformer extends TokenHandler {
  * Handle NEWLINE tokens, which trigger the actual quote analysis on the
  * collected quote tokens so far.
  */
-	public function onNewLine($token) {
+	public function processQuotes($token) {
 		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "NL    |", function () use($token) {
 			return (!isset($this->isActive) ? " ---> " : "") . json_encode($token);
 		});

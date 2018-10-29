@@ -2,12 +2,13 @@
 
 namespace Parsoid\Lib\Utils;
 
-require_once (__DIR__.'/../lib/config/WikitextConstants.php');
-//require_once "lib/config/WikitextConstants.php";
+require_once __DIR__."/../config/WikitextConstants.php";
+
 use Parsoid\Lib\Config\WikitextConstants;
 
 class DU {
 	const TPL_META_TYPE_REGEXP = '/(?:^|\s)(mw:(?:Transclusion|Param)(?:\/End)?)(?=$|\s)/';
+	const FIRST_ENCAP_REGEXP = '/(?:^|\s)(mw:(?:Transclusion|Param|LanguageVariant|Extension(\/[^\s]+)))(?=$|\s)/';
 
 	// For an explanation of what TSR is, see dom.computeDSR.js
 	//
@@ -61,6 +62,14 @@ class DU {
 	}
 
 	/**
+	 * Is a node representing inter-element whitespace?
+	 */
+	public static function isIEW($node) {
+		// ws-only
+		return self::isText($node) && preg_match('/^\s*$/', $node->nodeValue);
+	}
+
+	/**
 	 * Determine whether the node matches the given nodeName and typeof
 	 * attribute value.
 	 *
@@ -89,6 +98,16 @@ class DU {
 
 	public static function setDataParsoid( $node, $dp ) {
 		$node->setAttribute( 'data-parsoid', json_encode( $dp ) );
+	}
+
+	public static function getDataMW( $node ) {
+		// fixme: inefficient!!
+		// php dom impl doesn't provide the DOMUserData field => cannot cache this right now
+		return json_decode($node->getAttribute('data-mw'), true);
+	}
+
+	public static function setDataMW( $node, $dp ) {
+		$node->setAttribute( 'data-mw', json_encode( $dp ) );
 	}
 
 	/**
@@ -286,6 +305,83 @@ class DU {
 			self::hasRightType($node) ||
 			self::previousSiblingIsWrapper($node->previousSibling, $about)
 		);
+	}
+
+	/**
+	 * Is node the first wrapper element of encapsulated content?
+	 */
+	public static function isFirstEncapsulationWrapperNode($node) {
+		return self::isElt($node) &&
+			preg_match(self::FIRST_ENCAP_REGEXP, $node->getAttribute('typeof'));
+	}
+
+	public static function isFosterablePosition($n) {
+		return $n && isset(WikitextConstants::$HTML['FosterablePosition'][$n->parentNode->nodeName]);
+	}
+
+	/**
+	 * Gets all siblings that follow 'node' that have an 'about' as
+	 * their about id.
+	 *
+	 * This is used to fetch transclusion/extension content by using
+	 * the about-id as the key.  This works because
+	 * transclusion/extension content is a forest of dom-trees formed
+	 * by adjacent dom-nodes.  This is the contract that templace
+	 * encapsulation, dom-reuse, and VE code all have to abide by.
+	 *
+	 * The only exception to this adjacency rule is IEW nodes in
+	 * fosterable positions (in tables) which are not span-wrapped to
+	 * prevent them from getting fostered out.
+	 */
+	public static function getAboutSiblings($node, $about) {
+		$nodes = [ $node ];
+
+		if (!$about) {
+			return $nodes;
+		}
+
+		$node = $node->nextSibling;
+		while ($node && (
+			self::isElt($node) && $node->getAttribute('about') === $about ||
+				self::isFosterablePosition($node) && !self::isElt($node) && self::isIEW($node)
+		)) {
+			$nodes[] = $node;
+			$node = $node->nextSibling;
+		}
+
+		// Remove already consumed trailing IEW, if any
+		while (count($nodes) > 0 && self::isIEW($nodes[count($nodes) - 1])) {
+			array_pop($nodes);
+		}
+
+		return $nodes;
+	}
+
+	/**
+	 * Build path from a node to its passed-in ancestor.
+	 * Doesn't include the ancestor in the returned path.
+	 *
+	 * @param {Node} node
+	 * @param {Node} ancestor Should be an ancestor of `node`.
+	 * @return {Node[]}
+	 */
+	public static function pathToAncestor($node, $ancestor) {
+		$path = [];
+		while ($node && $node !== $ancestor) {
+			$path[] = $node;
+			$node = $node->parentNode;
+		}
+
+		return $path;
+	}
+
+	/**
+	 * Build path from a node to the root of the document.
+	 *
+	 * @return {Node[]}
+	 */
+	public static function pathToRoot($node) {
+		return self::pathToAncestor($node, null);
 	}
 
 	// FIXME: Should be in Utils.php

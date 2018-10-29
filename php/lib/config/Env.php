@@ -3,6 +3,10 @@
 namespace Parsoid\Lib\Config;
 
 class Env {
+	public function __construct() {
+		$this->wrapSections = true;
+	}
+
 	public function log() {
 		/*
 	   $args = func_get_args();

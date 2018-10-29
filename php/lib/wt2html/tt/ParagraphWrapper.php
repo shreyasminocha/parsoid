@@ -232,7 +232,7 @@ class ParagraphWrapper extends TokenHandler {
 			for ($i = count($out) - 1; $i > -1; $i--) {
 				$t = $out[$i];
 				$tt = Util::getType($t);
-				if ($tt !== "String" && $t->name === "meta") {
+				if (($tt == 'TagTk' || $tt == 'EndTagTk' || $tt == 'SelfclosingTagTk') && $t->name === "meta") {
 					$typeOf = $t->getAttribute("typeof");
 					if (preg_match('/^mw:Transclusion$/', $typeOf)) {
 						// We hit a start tag and everything after it is sol-transparent.
