@@ -563,7 +563,11 @@ function selectTestType($commandLine, $manager, $handler) {
 	$iterator = 1;
 	$numFailures = 0;
 	if (isset($commandLine->timingMode)) {
-		$iterator = 10000;
+		if (isset($commandLine->iterationCount)) {
+			$iterator = $commandLine->iterationCount;
+		} else {
+			$iterator = 10000;  // defaults to 10000 iterations
+		}
 	}
 	while ($iterator--) {
 		if (isset($commandLine->manual)) {
