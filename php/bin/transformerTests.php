@@ -298,8 +298,8 @@ class MockTTM {
 						$stringResult = json_encode($result['tokens'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 						# print "SR  : $stringResult\n";
 						# print "LINE: $line\n";
-						$line = preg_replace('/[{][}]/', '[]', $line);
-						$stringResult = preg_replace('/[{][}]/', '[]', $stringResult);
+						$line = preg_replace('/{}/', '[]', $line);
+						$stringResult = preg_replace('/{}/', '[]', $stringResult);
 						if ($stringResult === $line) {
 							if(!isset($commandLine->timingMode)) {
 								$console->log($testName . " ==> passed\n\n");
@@ -456,8 +456,8 @@ class MockTTM {
 					case '[':	// desired result json string for test result verification
 						$stringResult = json_encode($result['tokens'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 						# print "SR  : $stringResult\n";
-						$line = preg_replace('/[{][}]/', '[]', $line);
-						$stringResult = preg_replace('/[{][}]/', '[]', $stringResult);
+						$line = preg_replace('/{}/', '[]', $line);
+						$stringResult = preg_replace('/{}/', '[]', $stringResult);
 						if ($stringResult === $line) {
 							if(!isset($commandLine->timingMode)) {
 								$console->log("line " . ($p[$element] + 1) . " ==> passed\n");
