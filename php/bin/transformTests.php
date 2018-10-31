@@ -620,7 +620,7 @@ function runTests($argc, $argv) {
    $opts = processArguments($argc, $argv);
 
 	if (isset($opts->help)) {
-		$console->log('must specify [--manual] [--log] [--timingMode] --TransformerName --inputFile /path/filename');
+		$console->log('must specify [--manual] [--log] [--timingMode] [--iterationCount=XXX] --TransformerName --inputFile /path/filename');
 		return;
 	}
 
