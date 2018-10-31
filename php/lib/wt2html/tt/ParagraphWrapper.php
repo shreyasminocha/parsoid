@@ -152,7 +152,7 @@ class ParagraphWrapper extends TokenHandler {
 			$this->resetCurrLine();
 		}
 		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($res) {
-			return json_encode($res);
+			return json_encode($res, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		});
 		# FIXME!!
 		# $res["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
@@ -162,12 +162,12 @@ class ParagraphWrapper extends TokenHandler {
 	public function _flushBuffers() {
 		// Assertion to catch bugs in p-wrapping; both cannot be true.
 		if ($this->newLineCount > 0) {
-			$this->manager->env["log"]("error/p-wrap", "Failed assertion in _flushBuffers: newline-count:", $this->newLineCount, "; buffered tokens: ", json_encode($this->nlWsTokens));
+			$this->manager->env["log"]("error/p-wrap", "Failed assertion in _flushBuffers: newline-count:", $this->newLineCount, "; buffered tokens: ", json_encode($this->nlWsTokens, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 		}
 		$resToks = array_merge($this->tokenBuffer, $this->nlWsTokens);
 		$this->resetBuffers();
 		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($resToks) {
-			return json_encode($resToks);
+			return json_encode($resToks, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		});
 		# FIXME!!
 		# $resToks["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
@@ -263,7 +263,7 @@ class ParagraphWrapper extends TokenHandler {
 	// Handle NEWLINE tokens
 	public function onNewLineOrEOF($token) {
 		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "NL    |", function () use($token) {
-			return json_encode($token);
+			return json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		});
 		$l = $this->currLine;
 		if ($this->currLine["openMatch"] || $this->currLine["closeMatch"]) {
@@ -274,7 +274,7 @@ class ParagraphWrapper extends TokenHandler {
 
 		// Assertion to catch bugs in p-wrapping; both cannot be true.
 		if ($this->newLineCount > 0 && count($l["tokens"]) > 0) {
-			$this->env["log"]("error/p-wrap", "Failed assertion in onNewLineOrEOF: newline-count:", $this->newLineCount, "; current line tokens: ", json_encode($l["tokens"]));
+			$this->env["log"]("error/p-wrap", "Failed assertion in onNewLineOrEOF: newline-count:", $this->newLineCount, "; current line tokens: ", json_encode($l["tokens"], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 		}
 
 		$this->tokenBuffer = array_merge($this->tokenBuffer, $l["tokens"]);
@@ -285,7 +285,7 @@ class ParagraphWrapper extends TokenHandler {
 			$res = $this->processPendingNLs();
 			$this->reset();
 			$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($res) {
-				return json_encode($res);
+				return json_encode($res, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 			});
 			# FIXME!!
 			# $res["rank"] = ParagraphWrapper::SKIP_RANK(); // ensure this propagates further in the pipeline, and doesn't hit the AnyHandler
@@ -353,7 +353,7 @@ class ParagraphWrapper extends TokenHandler {
 	public function onAny($token) {
 		global $blockElems, $antiBlockElems, $alwaysSuppress, $neverSuppress;
 		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "ANY   |", function () use($token) {
-			return json_encode($token);
+			return json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		});
 		$res = null;
 		$tc = Util::getType($token);
@@ -387,7 +387,7 @@ class ParagraphWrapper extends TokenHandler {
 				}
 				$this->currLine["closeMatch"] = true;
 				$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($token) {
-					return json_encode($token);
+					return json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 				});
 				$res = [ $token ];
 				# FIXME!!
@@ -396,7 +396,7 @@ class ParagraphWrapper extends TokenHandler {
 			}
 		} else if ($tc === "EOFTk" || $this->inPre) {
 			$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($token) {
-				return json_encode($token);
+				return json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 			});
 			$res = [ $token ];
 			# FIXME!!
