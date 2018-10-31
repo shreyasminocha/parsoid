@@ -103,6 +103,7 @@ function kvsFromArray( $a ) {
 
 class console {
 	public function log($string) {
+		// Suppress spurious backslash escaping of '/' char
 		echo preg_replace('/\\\\\\//', '/', $string);
 	}
 
