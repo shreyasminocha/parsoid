@@ -103,7 +103,7 @@ function kvsFromArray( $a ) {
 
 class console {
 	public function log($string) {
-		echo $string;
+		echo preg_replace('/\\\\\\//', '/', $string);
 	}
 
 	public function assert($condition, $message) {
@@ -460,7 +460,7 @@ class MockTTM {
 						$stringResult = preg_replace('/{}/', '[]', $stringResult);
 						if ($stringResult === $line) {
 							if(!isset($commandLine->timingMode)) {
-								$console->log("line " . ($p[$element] + 1) . " ==> passed\n");
+								$console->log("line " . ($p[$element] + 1) . " ==> passed\n\n");
 							}
 						} else {
 							$numFailures++;
@@ -536,11 +536,11 @@ class MockTTM {
 		global $console;
 
 		if(!isset($commandLine->timingMode)) {
-			$console->log("Starting stand alone unit test running file " . $commandLine->inputFile . "\n");
+			$console->log("Starting stand alone unit test running file " . $commandLine->inputFile . "\n\n");
 		}
 		$numFailures = $tokenTransformer->manager->ProcessTestFile($commandLine);
 		if(!isset($commandLine->timingMode)) {
-			$console->log("Ending stand alone unit test running file " . $commandLine->inputFile . "\n");
+			$console->log("Ending stand alone unit test running file " . $commandLine->inputFile . "\n\n");
 		}
 		return $numFailures;
 	}
@@ -549,11 +549,11 @@ class MockTTM {
 		global $console;
 
 		if(!isset($commandLine->timingMode)) {
-			$console->log("Starting stand alone wikitext test running file " . $commandLine->inputFile . "\n");
+			$console->log("Starting stand alone wikitext test running file " . $commandLine->inputFile . "\n\n");
 		}
 		$numFailures = $tokenTransformer->manager->ProcessWikitextFile($tokenTransformer, $commandLine);
 		if(!isset($commandLine->timingMode)) {
-			$console->log("Ending stand alone wikitext test running file " . $commandLine->inputFile . "\n");
+			$console->log("Ending stand alone wikitext test running file " . $commandLine->inputFile . "\n\n");
 		}
 		return $numFailures;
 	}
