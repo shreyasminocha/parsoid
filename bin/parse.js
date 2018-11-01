@@ -165,10 +165,10 @@ var standardOpts = ScriptUtils.addStandardOptions({
 		'boolean': false,
 		'default': null,
 	},
-	'contentVersion': {
+	'outputContentVersion': {
 		description: 'The acceptable content version.',
 		'boolean': false,
-		'default': ParserEnvProto.contentVersion,
+		'default': ParserEnvProto.outputContentVersion,
 	},
 	'pageName': {
 		description: 'The page name, returned for {{PAGENAME}}. If no input is given (ie. empty/stdin closed), it downloads and parses the page. This should be the actual title of the article (that is, not including any URL-encoding that might be necessary in wikitext).',
@@ -373,7 +373,7 @@ Promise.async(function *() {
 		selser: selser,
 		pb: pb,
 		contentmodel: argv.contentmodel,
-		contentVersion: argv.contentVersion,
+		outputContentVersion: argv.outputContentVersion,
 		body_only: argv.body_only,
 	};
 	var out;
