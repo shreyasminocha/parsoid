@@ -58,6 +58,7 @@ require_once (__DIR__.'/../vendor/autoload.php');
 
 require_once (__DIR__.'/../lib/config/Env.php');
 require_once (__DIR__.'/../lib/config/WikitextConstants.php');
+require_once (__DIR__.'/../lib/utils/phputils.php');
 
 require_once (__DIR__.'/../lib/wt2html/parser.defines.php');
 require_once (__DIR__.'/../lib/wt2html/tt/QuoteTransformer.php');
@@ -66,6 +67,7 @@ require_once (__DIR__.'/../lib/wt2html/tt/ParagraphWrapper.php');
 use Parsoid\Lib\Config;
 use Parsoid\Lib\Config\Env;
 use Parsoid\Lib\Config\WikitextConstants;
+use Parsoid\Lib\PHPUtils\PHPUtil;
 use Parsoid\Lib\Wt2html\KV;
 use Parsoid\Lib\Wt2html\TagTk;
 use Parsoid\Lib\Wt2html\EndTagTk;
@@ -132,6 +134,9 @@ class MockTTM {
 		$this->tokenTransformers   = [];	// non-any transforms
 		$this->console = new console;
 		$this->tokenTime = 0;
+		$this->addXformTime = 0;
+		$this->removeXformTime = 0;
+		$this->getXformTime = 0;
 		$this->init();
 	}
 
@@ -175,6 +180,8 @@ class MockTTM {
 
 	public function addTransform($transformation, $debugName, $rank, $type, $name = null) {
 		global $console;
+		$startTime = PHPUtil::getStartHRTime();
+
 		$this->pipeLineModified = true;
 
 		$t = makeMap([
@@ -205,6 +212,7 @@ class MockTTM {
 			$this->tokenTransformers[$key][] = $t;
 			usort($this->tokenTransformers[$key], "self::_cmpTransformations");
 		}
+		$this->addXformTime += PHPUtil::getHRTimeDifferential($startTime);
 	}
 
 	private function removeMatchingTransform(&$transformers, $rank) {
@@ -217,6 +225,8 @@ class MockTTM {
 	}
 
 	public function removeTransform($rank, $type, $name = null) {
+		$startTime = PHPUtil::getStartHRTime();
+
 		$this->pipeLineModified = true;
 		if ($type === 'any') {
 			// Remove from default transformers
@@ -227,9 +237,12 @@ class MockTTM {
 				$this->removeMatchingTransform($this->tokenTransformers[$key], $rank);
 			}
 		}
+		$this->removeXformTime += PHPUtil::getHRTimeDifferential($startTime);
 	}
 
 	public function getTransforms($token, $minRank) {
+		$startTime = PHPUtil::getStartHRTime();
+
 		$isStr = gettype($token) === "string";
 		$type = $isStr ? "String" : $token->getType();
 		$name = $isStr ? "" : (isset($token->name) ? $token->name : "");
@@ -250,6 +263,7 @@ class MockTTM {
 				$i += 1;
 			}
 		}
+		$this->getXformTime += PHPUtil::getHRTimeDifferential($startTime);
 		return [ 'first' => $i, 'transforms' => $tts, 'empty' => ($i >= sizeof($tts)) ];
 	}
 
@@ -349,7 +363,8 @@ class MockTTM {
 					}
 
 					# print "PROCESSING $line\n";
-					$startTime = microtime(true);
+					$startTime = PHPUtil::getStartHRTime();
+
 					$ts = $this->getTransforms($token, 2.0);
 
 					// Push the token through the transformations till it morphs
@@ -368,7 +383,7 @@ class MockTTM {
 						}
 						$j++;
 					}
-					$this->tokenTime += (microtime(true) - $startTime);
+					$this->tokenTime += PHPUtil::getHRTimeDifferential($startTime);
 					break;
 			}
 		}
@@ -506,7 +521,8 @@ class MockTTM {
 						}
 
 						# print "PROCESSING $line\n";
-						$startTime = microtime(true);
+						$startTime = PHPUtil::getStartHRTime();
+
 						$ts = $this->getTransforms($token, 2.0);
 
 						// Push the token through the transformations till it morphs
@@ -523,8 +539,7 @@ class MockTTM {
 							}
 							$j++;
 						}
-						$this->tokenTime += (microtime(true) - $startTime);
-
+						$this->tokenTime += PHPUtil::getHRTimeDifferential($startTime);
 						break;
 				}
 			}
@@ -641,7 +656,7 @@ function runTests($argc, $argv) {
 		$console->log("Timing Mode enabled, no console output expected till test completes\n");
 	}
 
-	$startTime = microtime(true);
+	$startTime = PHPUtil::getStartHRTime();
 
 	if (isset($opts->QuoteTransformer)) {
 		$qt = new Parsoid\Lib\Wt2html\TT\QuoteTransformer($manager, function () {});
@@ -672,9 +687,12 @@ function runTests($argc, $argv) {
 		$numFailures++;
 	}
 
-	$totalTime = microtime(true) - $startTime;
-	$console->log('Total transformer execution time = ' . $totalTime * 1000 . " milliseconds\n");
-	$console->log('Total time processing tokens     = ' . $manager->tokenTime * 1000 . " milliseconds\n");
+	$totalTime = PHPUtil::getHRTimeDifferential($startTime);
+	$console->log('Total transformer execution time = ' . $totalTime . " milliseconds\n");
+	$console->log('Total time processing tokens     = ' . round($manager->tokenTime, 3) . " milliseconds\n");
+	$console->log('Total time adding transformers   = ' . round($manager->addXformTime, 3) . " milliseconds\n");
+	$console->log('Total time removing transformers = ' . round($manager->removeXformTime, 3) . " milliseconds\n");
+	$console->log('Total time getting transformers  = ' . round($manager->getXformTime, 3) . " milliseconds\n");
 	if ($numFailures) {
 		$console->log('Total failures: ' . $numFailures);
 		exit(1);
