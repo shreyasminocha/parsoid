@@ -235,6 +235,15 @@ class DU {
 			isset($dp['stx']) && ($dp['stx'] === "url" || $dp['stx'] === "magiclink");
 	}
 
+	public static function usesMagicLinkSyntax($aNode, $dp) {
+		if ($dp === null) {
+			$dp = self::getDataParsoid($aNode);
+		}
+
+		return $aNode->getAttribute("rel") === "mw:ExtLink" &&
+			isset($dp['stx']) && $dp['stx'] === "magiclink";
+	}
+
 	/**
 	 * Find how much offset is necessary for the DSR of an
 	 * indent-originated pre tag.
@@ -284,15 +293,8 @@ class DU {
 		return mb_strlen($node->textContent) + 7;
 	}
 
-	private static function hasRightType($n) {
-		return preg_match('/(?:^|\s)mw:DOMFragment(?=$|\s)/', $n->getAttribute("typeof"));
-	}
-
-	private static function previousSiblingIsWrapper($sibling, $abt) {
-		return $sibling &&
-			self::isElt($sibling) &&
-			$abt === $sibling->getAttribute("about") &&
-			self::hasRightType($sibling);
+	public static function isDOMFragmentType($typeOf) {
+		return preg_match('/(?:^|\s)mw:DOMFragment(\/sealed\/\w+)?(?=$|\s)/', $typeOf);
 	}
 
 	public static function isDOMFragmentWrapper($node) {
@@ -302,8 +304,7 @@ class DU {
 
 		$about = $node->getAttribute("about");
 		return $about && (
-			self::hasRightType($node) ||
-			self::previousSiblingIsWrapper($node->previousSibling, $about)
+			self::isDOMFragmentType($node->getAttribute("typeof"))
 		);
 	}
 

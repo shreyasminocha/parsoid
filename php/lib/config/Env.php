@@ -9,17 +9,16 @@ class Env {
 
 	public function log() {
 		/*
-	   $args = func_get_args();
-		$traceType = array_shift($args);
-		print "$traceType ";
-		foreach ($args as $arg) {
-			if (is_callable($arg)) {
-				print $arg();
+		$arguments = func_get_args();
+		$output = $arguments[0];
+		for ($index = 1; $index < sizeof($arguments); $index++) {
+            if (is_callable($arguments[$index])) {
+				$output = $output . ' ' . $arguments[$index]();
 			} else {
-				print $arg;
+				$output = $output . ' ' . $arguments[$index];
 			}
 		}
-		print "\n";
+		echo  $output . "\n";
 		*/
 	}
 }

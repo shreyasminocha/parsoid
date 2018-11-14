@@ -26,7 +26,7 @@ function acceptableInconsistency($opts, $node, $cs, $s) {
 	 *
 	 * 3. Other scenarios .. to be added
 	 */
-	if ($node->nodeName === 'a' && DU::usesURLLinkSyntax($node, null)) {
+	if ($node->nodeName === 'a' && (DU::usesURLLinkSyntax($node, null) || DU::usesMagicLinkSyntax($node, null))) {
 		return true;
 	} else if (isset($opts->attrExpansion) && DU::isBody($node)) {
 		return true;
@@ -96,7 +96,7 @@ function computeATagWidth($node, $dp) {
 			}
 		} else if (isset($dp['tsr']) && DU::usesExtLinkSyntax($node, $dp)) {
 			return [$dp['targetOff'] - $dp['tsr'][0], 1];
-		} else if (DU::usesURLLinkSyntax($node, $dp)) {
+		} else if (DU::usesURLLinkSyntax($node, $dp) || DU::usesMagicLinkSyntax($node, $dp)) {
 			return [0, 0];
 		} else {
 			return null;
@@ -421,7 +421,7 @@ function computeNodeDSR($env, $node, $s, $e, $dsrCorrection, $opts) {
 					// just a wrapper token with the right DSR but without any
 					// nested subtree that could account for the DSR span.
 					$newDsr = [$ccs, $cce];
-				} else if ($child->nodeName === 'A'
+				} else if ($child->nodeName === 'a'
 					&& DU::usesWikiLinkSyntax($child, $dp)
 					&& $dp['stx'] !== "piped") {
 					/* -------------------------------------------------------------
