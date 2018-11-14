@@ -140,13 +140,6 @@ var standardOpts = ScriptUtils.addStandardOptions({
 		'boolean': true,
 		'default': true,
 	},
-	'useBatchAPI': {
-		description: 'Turn on/off the API batching system',
-		// Since I picked a null default (to let the default config setting be the default),
-		// I cannot make this a boolean option.
-		'boolean': false,
-		'default': null,
-	},
 
 	// These are MWParserEnvironment properties
 
@@ -260,7 +253,6 @@ Promise.async(function *() {
 	var parsoidOptions = {
 		linting: argv.linting,
 		loadWMF: argv.loadWMF,
-		useBatchAPI: argv.useBatchAPI,
 		useWorker: argv.useWorker,
 	};
 
@@ -337,6 +329,8 @@ Promise.async(function *() {
 
 		// Send a message to stderr if there is no input for a while, since the
 		// convention that --pageName must be used with </dev/null is confusing.
+		// Note: To run code in WebStorm where </dev/null is not possible to set,
+		// and WebStorm hangs on waiting for stdin, comment out this block of code temporarily
 		var stdinTimer = setTimeout(function() {
 			console.error('Waiting for stdin...');
 		}, 1000);

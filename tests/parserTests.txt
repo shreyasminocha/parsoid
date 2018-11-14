@@ -37,7 +37,7 @@
 # You can also set the following parser properties via test options:
 #  wgEnableUploads, wgAllowExternalImages, wgMaxTocLevel,
 #  wgLinkHolderBatchSize, wgRawHtml, wgInterwikiMagic,
-#  wgEnableMagicLinks
+#  wgEnableMagicLinks, wgMediaInTargetLanguage
 #
 # For testing purposes, temporary articles can created:
 # !!article / NAMESPACE:TITLE / !!text / ARTICLE TEXT / !!endarticle
@@ -54,6 +54,12 @@ blah blah
 Foo
 !!text
 FOO
+!!endarticle
+
+!!article
+Foo''s bar''s
+!!text
+Article titles can contain single quotes!
 !!endarticle
 
 !!article
@@ -2909,6 +2915,23 @@ Self-closed pre
 !! end
 
 !! test
+Newline before table-close generates empty table row: T208619
+!! wikitext
+{|
+
+|}
+!! html/php+tidy
+<table>
+
+<tbody><tr><td></td></tr></tbody></table>
+!! html/parsoid
+<table data-parsoid='{}'>
+
+</table>
+!! end
+
+# PHP has one more row in the output than Parsoid does: T208619
+!! test
 Parsoid: Don't paragraph-wrap fosterable content even if table syntax is unbalanced
 !! options
 parsoid=wt2html
@@ -2921,7 +2944,16 @@ parsoid=wt2html
 
 
 |}
-!! html
+!! html/php+tidy
+<table>
+<tbody><tr><td>
+</td><td>
+</td>
+
+
+
+</tr><tr><td></td></tr></tbody></table>
+!! html/parsoid
 <table>
 
 <tbody>
@@ -3199,12 +3231,13 @@ data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},
 
 !! test
 Parsoid: Pipe in template with nested template in external link target in template parameter (seriously)
-!! options
-parsoid
 !! wikitext
 {{echo|[{{fullurl:{{FULLPAGENAME}}|action=edit}} bar]}}
-!! html
-<p typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"[{{fullurl:{{FULLPAGENAME}}|action=edit}} bar]"}},"i":0}}]}'>[Main Page bar]</p>
+!! html/php+tidy
+<p><a rel="nofollow" class="external text" href="http://example.org/index.php?title=Parser_test&amp;action=edit">bar</a>
+</p>
+!! html/parsoid
+<p><a rel="mw:ExtLink" class="external text" href="http://example.org/index.php?title=Parser_test&amp;action=edit" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"[{{fullurl:{{FULLPAGENAME}}|action=edit}} bar]"}},"i":0}}]}'>bar</a></p>
 !! end
 
 !! test
@@ -6240,6 +6273,8 @@ parsoid=wt2html
 
 !! end
 
+# Note that the PHP parser output appears to be broken when the table
+# end tag is not separated by a space from the style attribute
 !! test
 A table with stray table end tags on start tag line (wt2html)
 !! options
@@ -6258,7 +6293,22 @@ parsoid=wt2html
 {|style="color: red;" |} id="foo"
 |foo
 |}
-!! html
+!! html/php+tidy
+<table style="&quot;color:">
+
+</table><table style="color: red;">
+<tbody><tr>
+<td>foo
+</td></tr></tbody></table>
+<table style="&quot;color:" id="foo">
+<tbody><tr>
+<td>foo
+</td></tr></tbody></table>
+<table style="color: red;" id="foo">
+<tbody><tr>
+<td>foo
+</td></tr></tbody></table>
+!! html/parsoid
 <table style="color: red;"></table>
 
 <table style="color: red;">
@@ -6875,9 +6925,9 @@ Don't break on | in extension attribute in template
 
 <references />
 !! html/parsoid
-<p><sup about="#mwt2" class="mw-ref" id="cite_ref-hi|ho_1-0" rel="dc:references" typeof="mw:Transclusion  mw:Extension/ref" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"&lt;ref name=\"hi|ho\">ha&lt;/ref>"}},"i":0}}]}'><a href="./Main_Page#cite_note-hi|ho-1" style="counter-reset: mw-Ref 1;"><span class="mw-reflink-text">[1]</span></a></sup></p>
+<p><sup about="#mwt2" class="mw-ref" id="cite_ref-hi|ho_1-0" rel="dc:references" typeof="mw:Transclusion  mw:Extension/ref" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"&lt;ref name=\"hi|ho\">ha&lt;/ref>"}},"i":0}}]}'><a href="./Parser_test#cite_note-hi|ho-1" style="counter-reset: mw-Ref 1;"><span class="mw-reflink-text">[1]</span></a></sup></p>
 
-<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt5" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-hi|ho-1" id="cite_note-hi|ho-1"><a href="./Main_Page#cite_ref-hi|ho_1-0" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-hi|ho-1" class="mw-reference-text">ha</span></li></ol>
+<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt5" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-hi|ho-1" id="cite_note-hi|ho-1"><a href="./Parser_test#cite_ref-hi|ho_1-0" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-hi|ho-1" class="mw-reference-text">ha</span></li></ol>
 !! end
 
 ## We don't support roundtripping of these attributes in Parsoid.
@@ -7050,9 +7100,9 @@ T107652: <ref>s in templates that also generate table cell attributes should be 
 <references />
 !! html/parsoid
 <table>
-<tbody><tr><td style="background:#f9f9f9;" typeof="mw:Transclusion" about="#mwt1" data-mw='{"parts":["|",{"template":{"target":{"wt":"table_attribs_7","href":"./Template:Table_attribs_7"},"params":{},"i":0}}]}'>Foo<sup class="mw-ref" id="cite_ref-1" rel="dc:references" typeof="mw:Extension/ref" data-mw='{"name":"ref","attrs":{},"body":{"id":"mw-reference-text-cite_note-1"}}'><a href="./Main_Page#cite_note-1" style="counter-reset: mw-Ref 1;"><span class="mw-reflink-text">[1]</span></a></s></td></tr>
+<tbody><tr><td style="background:#f9f9f9;" typeof="mw:Transclusion" about="#mwt1" data-mw='{"parts":["|",{"template":{"target":{"wt":"table_attribs_7","href":"./Template:Table_attribs_7"},"params":{},"i":0}}]}'>Foo<sup class="mw-ref" id="cite_ref-1" rel="dc:references" typeof="mw:Extension/ref" data-mw='{"name":"ref","attrs":{},"body":{"id":"mw-reference-text-cite_note-1"}}'><a href="./Parser_test#cite_note-1" style="counter-reset: mw-Ref 1;"><span class="mw-reflink-text">[1]</span></a></s></td></tr>
 </tbody></table>
-<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt5" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Main_Page#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text" data-parsoid="{}">foo</span></li></ol>
+<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt5" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Parser_test#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text" data-parsoid="{}">foo</span></li></ol>
 !! end
 
 !! test
@@ -7489,6 +7539,7 @@ foo
 </tbody></table>
 !!end
 
+# Note: PHP parser omits empty rows
 !! test
 Tables: Digest broken attributes on table and tr tag
 !! options
@@ -7498,7 +7549,12 @@ parsoid=wt2html
 |- || || ++ --
 |- > [
 |}
-!! html
+!! html/php+tidy
+<table>
+
+
+</table>
+!! html/parsoid
 <table>
 <tbody>
 <tr class='mw-empty-elt'></tr>
@@ -7613,7 +7669,7 @@ parsoid=html2wt
 Wikitext tables can be nested inside HTML tables
 !! options
 parsoid=html2wt
-!! html
+!! html/parsoid
 <table data-parsoid='{"stx":"html"}'>
 <tr><td>
 <table>
@@ -7629,6 +7685,15 @@ parsoid=html2wt
 |}
 </td></tr>
 </table>
+!! html/php+tidy
+<table>
+<tbody><tr><td>
+<table>
+<tbody><tr>
+<td>foo
+</td></tr></tbody></table>
+</td></tr>
+</tbody></table>
 !! end
 
 ###
@@ -7979,6 +8044,8 @@ Link containing % as a double hex sequence interpreted to hex sequence
 ## Example for such a section: == < ==
 !! test
 Link containing "#<" and "#>" % as a hex sequences- these are valid section anchors
+!! options
+title=[[Main Page]]
 !! config
 wgFragmentMode=[ 'html5', 'legacy' ]
 !! wikitext
@@ -8020,6 +8087,31 @@ Link containing an equals sign
 </p>
 !! html/parsoid
 <p><a rel="mw:WikiLink" href="./Special:BookSources/isbn=4-00-026157-6" title="Special:BookSources/isbn=4-00-026157-6">Special:BookSources/isbn=4-00-026157-6</a></p>
+!! end
+
+!! article
+Foo & bar
+!! text
+Just a test of an article title containing an ampersand
+!! endarticle
+
+!! test
+Link containing an ampersand
+!! wikitext
+[[Foo & bar]]
+
+[[Foo &amp; bar]]
+
+[[Foo &amp;amp; bar]]
+!! html/php+tidy
+<p><a href="/wiki/Foo_%26_bar" title="Foo &amp; bar">Foo &amp; bar</a>
+</p><p><a href="/wiki/Foo_%26_bar" title="Foo &amp; bar">Foo &amp; bar</a>
+</p><p>[[Foo &amp;amp; bar]]
+</p>
+!! html/parsoid
+<p><a rel="mw:WikiLink" href="./Foo_&amp;_bar" title="Foo &amp; bar">Foo &amp; bar</a></p>
+<p><a rel="mw:WikiLink" href="./Foo_&amp;_bar" title="Foo &amp; bar" data-parsoid='{"stx":"simple","a":{"href":"./Foo_&amp;_bar"},"sa":{"href":"Foo &amp;amp; bar"}}'>Foo &amp; bar</a></p>
+<p>[[Foo <span typeof="mw:Entity" data-parsoid='{"src":"&amp;amp;","srcContent":"&amp;"}'>&amp;</span>amp; bar]]</p>
 !! end
 
 !! article
@@ -8502,27 +8594,32 @@ parsoid=html2wt
 1. Interaction of linktrail and template encapsulation
 !! wikitext
 {{echo|[[Foo]]}}l
+!! html/php+tidy
+<p><a href="/wiki/Foo" title="Foo">Fool</a>
+</p>
 !! html/parsoid
 <p><a rel="mw:WikiLink" href="./Foo" title="Foo" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"[[Foo]]"}},"i":0}},"l"]}'>Fool</a></p>
 !! end
 
 !! test
 2. Interaction of linktrail and template encapsulation
-!! options
-parsoid
 !! wikitext
 {{echo|Some [[Fool]]}}s
-!! html
+!! html/php+tidy
+<p>Some <a href="/index.php?title=Fool&amp;action=edit&amp;redlink=1" class="new" title="Fool (page does not exist)">Fools</a>
+</p>
+!! html/parsoid
 <p><span about="#mwt1" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"Some [[Fool]]"}},"i":0}},"s"]}' data-parsoid='{"pi":[[{"k":"1"}]]}'>Some </span><a rel="mw:WikiLink" href="./Fool" title="Fool" about="#mwt1" data-parsoid='{"stx":"simple","a":{"href":"./Fool"},"sa":{"href":"Fool"},"tail":"s"}'>Fools</a></p>
 !! end
 
 !! test
 3. Interaction of linktrail and template encapsulation
-!! options
-parsoid
 !! wikitext
 {{echo|Some [[Fool]]s are '''bold and foolish'''}}
-!! html
+!! html/php+tidy
+<p>Some <a href="/index.php?title=Fool&amp;action=edit&amp;redlink=1" class="new" title="Fool (page does not exist)">Fools</a> are <b>bold and foolish</b>
+</p>
+!! html/parsoid
 <p about="#mwt1" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"Some [[Fool]]s are &#39;&#39;&#39;bold and foolish&#39;&#39;&#39;"}},"i":0}}]}' data-parsoid='{"pi":[[{"k":"1"}]]}'>Some <a rel="mw:WikiLink" href="./Fool" title="Fool" data-parsoid='{"stx":"simple","a":{"href":"./Fool"},"sa":{"href":"Fool"},"tail":"s"}'>Fools</a> are <b>bold and foolish</b></p>
 !! end
 
@@ -8702,15 +8799,13 @@ parsoid=wt2html,wt2wt
 !! wikitext
 *[[Wikipedia:ro:Olteni&#0355;a]]
 *[[Wikipedia:ro:Olteni&#355;a]]
-!! html
+!! html/php
 <ul><li><a href="http://en.wikipedia.org/wiki/ro:Olteni%C5%A3a" class="extiw" title="wikipedia:ro:Olteniţa">Wikipedia:ro:Olteni&#355;a</a></li>
 <li><a href="http://en.wikipedia.org/wiki/ro:Olteni%C5%A3a" class="extiw" title="wikipedia:ro:Olteniţa">Wikipedia:ro:Olteni&#355;a</a></li></ul>
 
 !! html/php+tidy
-<ul>
-<li><a href="http://en.wikipedia.org/wiki/ro:Olteni%C5%A3a" class="extiw" title="wikipedia:ro:Olteniţa">Wikipedia:ro:Olteniţa</a></li>
-<li><a href="http://en.wikipedia.org/wiki/ro:Olteni%C5%A3a" class="extiw" title="wikipedia:ro:Olteniţa">Wikipedia:ro:Olteniţa</a></li>
-</ul>
+<ul><li><a href="http://en.wikipedia.org/wiki/ro:Olteni%C5%A3a" class="extiw" title="wikipedia:ro:Olteniţa">Wikipedia:ro:Olteni&#355;a</a></li>
+<li><a href="http://en.wikipedia.org/wiki/ro:Olteni%C5%A3a" class="extiw" title="wikipedia:ro:Olteniţa">Wikipedia:ro:Olteni&#355;a</a></li></ul>
 !! html/parsoid
 <ul>
 <li><a rel="mw:WikiLink/Interwiki" href="http://en.wikipedia.org/wiki/ro:Olteniţa" title="wikipedia:ro:Olteniţa">Wikipedia:ro:Olteniţa</a></li>
@@ -8729,6 +8824,8 @@ Interwiki link with fragment (T4130)
 
 !! test
 Link scenarios with escaped fragments
+!! options
+title=[[Main Page]]
 !! config
 wgFragmentMode=[ 'html5', 'legacy' ]
 !! wikitext
@@ -9879,12 +9976,14 @@ Nested lists 8 (multiple nesting transitions)
 
 !! end
 
+# XXX this test should be moved to citeParserTests, since it depends
+# on the Cite extension, which is "built in" to Parsoid.
 !! test
 Nested lists 9 (extension interaction)
-!! options
-parsoid
 !! wikitext
 *<references />
+!! html/php+tidy-DISABLED
+<ul><li class="mw-empty-elt"></li></ul>
 !! html/parsoid
 <ul><li data-parsoid='{}'><ol class="mw-references references" typeof="mw:Extension/references" about="#mwt2" data-parsoid='{}' data-mw='{"name":"references","attrs":{}}'></ol></li></ul>
 !! end
@@ -10123,8 +10222,6 @@ parsoid=wt2html,wt2wt
 
 !! test
 Parsoid: Make sure nested lists are serialized on their own line even if HTML contains no newlines
-!! options
-parsoid
 !! wikitext
 #foo
 ##bar
@@ -10134,7 +10231,14 @@ parsoid
 
 :foo
 ::bar
-!! html
+!! html/php+tidy
+<ol><li>foo
+<ol><li>bar</li></ol></li></ol>
+<ul><li>foo
+<ul><li>bar</li></ul></li></ul>
+<dl><dd>foo
+<dl><dd>bar</dd></dl></dd></dl>
+!! html/parsoid
 <ol>
 <li>foo<ol>
 <li>bar</li>
@@ -10913,10 +11017,18 @@ Aoeu
 # From plwiki:PLOS_ONE
 !! test
 Parsoid: Page property magic word with magic word contents
+!! options
+showtitle
+!! config
+wgAllowDisplayTitle=true
+wgRestrictDisplayTitle=false
 !! wikitext
 {{DISPLAYTITLE:''{{PAGENAME}}''}}
+!! html/php+tidy
+<i>Parser test</i>
+
 !! html/parsoid
-<meta property="mw:PageProp/displaytitle" content="Main Page" about="#mwt3" typeof="mw:ExpandedAttrs" data-parsoid='{"src":"{{DISPLAYTITLE:&#39;&#39;{{PAGENAME}}&#39;&#39;}}"}' data-mw='{"attribs":[[{"txt":"content"},{"html":"DISPLAYTITLE:&lt;i data-parsoid=&#39;{\"dsr\":[15,31,2,2]}&#39;>&lt;span about=\"#mwt1\" typeof=\"mw:Transclusion\" data-parsoid=&#39;{\"pi\":[[]],\"dsr\":[17,29,null,null]}&#39; data-mw=&#39;{\"parts\":[{\"template\":{\"target\":{\"wt\":\"PAGENAME\",\"function\":\"pagename\"},\"params\":{},\"i\":0}}]}&#39;>Main Page&lt;/span>&lt;/i>"}]]}'/>
+<meta property="mw:PageProp/displaytitle" content="Parser test" about="#mwt3" typeof="mw:ExpandedAttrs" data-parsoid='{"src":"{{DISPLAYTITLE:&#39;&#39;{{PAGENAME}}&#39;&#39;}}"}' data-mw='{"attribs":[[{"txt":"content"},{"html":"DISPLAYTITLE:&lt;i data-parsoid=&#39;{\"dsr\":[15,31,2,2]}&#39;>&lt;span about=\"#mwt1\" typeof=\"mw:Transclusion\" data-parsoid=&#39;{\"pi\":[[]],\"dsr\":[17,29,null,null]}&#39; data-mw=&#39;{\"parts\":[{\"template\":{\"target\":{\"wt\":\"PAGENAME\",\"function\":\"pagename\"},\"params\":{},\"i\":0}}]}&#39;>Parser test&lt;/span>&lt;/i>"}]]}'/>
 !! end
 
 # NOTE: mw:ExpandedAttrs is not the best typeof here. mw:Transclusion is better.
@@ -12153,7 +12265,18 @@ c}}d
 <table></table>
 
 b}}
-!! html
+!! html/php+tidy
+<p>ab</p><table></table><p>cd
+</p><p>ab
+</p>
+<table></table>
+<p>cd
+</p><p>a
+</p>
+<table></table>
+<p>b
+</p>
+!! html/parsoid
 <p about="#mwt1" typeof="mw:Transclusion" data-mw='{"parts":["a",{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"b&lt;table>&lt;/table>c"}},"i":0}},"d"]}' data-parsoid='{"pi":[[{"k":"1"}]]}'>ab</p><table about="#mwt1" data-parsoid='{"stx":"html"}'></table><p about="#mwt1">cd</p>
 
 <p about="#mwt2" typeof="mw:Transclusion" data-mw='{"parts":["a",{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"b\n&lt;table>&lt;/table>\nc"}},"i":0}},"d"]}' data-parsoid='{"pi":[[{"k":"1"}]]}'>ab</p><span about="#mwt2">
@@ -12169,13 +12292,16 @@ b}}
 
 !! test
 Parsoid: Merge double tds (T52603)
-!! options
-parsoid
 !! wikitext
 {|
 |{{echo|{{!}} foo}}
 |}
-!! html
+!! html/php+tidy
+<table>
+<tbody><tr>
+<td>foo
+</td></tr></tbody></table>
+!! html/parsoid
 <table><tbody>
 <tr><td about="#mwt1" typeof="mw:Transclusion" data-mw='{"parts":["|",{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"{{!}} foo"}},"i":0}}]}'> foo</td></tr>
 </tbody></table>
@@ -12183,15 +12309,20 @@ parsoid
 
 !! test
 Parsoid: Merge double tds in nested transclusion content (T52603)
-!! options
-parsoid
 !! wikitext
 {{echo|<div>}}
 {|
 |{{echo|{{!}} foo}}
 |}
 {{echo|</div>}}
-!! html
+!! html/php+tidy
+<div>
+<table>
+<tbody><tr>
+<td>foo
+</td></tr></tbody></table>
+</div>
+!! html/parsoid
 <div about="#mwt1" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"<div>"}},"i":0}},"\n{|\n|",{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"{{!}} foo"}},"i":1}},"\n|}\n",{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"</div>"}},"i":2}}]}'>
 <table><tbody>
 <tr><td data-mw='{"parts":["|"]}'> foo</td></tr>
@@ -12925,14 +13056,15 @@ bar <div>baz</div>
 bar </p><div>baz</div>
 !! end
 
-!!test
+!! test
 Templates: P-wrapping: 1d. Template preceded by comment-only line
-!!options
-parsoid
 !! wikitext
 <!-- foo -->
 {{echo|Bar}}
-!! html
+!! html/php+tidy
+<p>Bar
+</p>
+!! html/parsoid
 <!-- foo -->
 
 <p about="#mwt223" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"Bar"}},"i":0}}]}'>Bar</p>
@@ -12945,7 +13077,10 @@ parsoid=wt2html,wt2wt
 !! wikitext
 {{echo|<div>a</div>}}b{{echo|
 <div>c</div>}}
-!! html
+!! html/php+tidy
+<div>a</div><p>b
+</p><div>c</div>
+!! html/parsoid
 <div about="#mwt1" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"&lt;div>a&lt;/div>"}},"i":0}}]}'>a</div><p>b</p><span about="#mwt2" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"\n&lt;div>c&lt;/div>"}},"i":0}}]}'>
 </span><div about="#mwt2">c</div>
 !! end
@@ -13362,7 +13497,10 @@ parsoid=wt2html,wt2wt
 <table>[[Category:foo1]]<tr><td>foo</td></tr></table>
 <!--Two categories (T52330)-->
 <table>[[Category:bar1]][[Category:bar2]]<tr><td>foo</td></tr></table>
-!! html
+!! html/php+tidy
+<table><tbody><tr><td>foo</td></tr></tbody></table>
+<table><tbody><tr><td>foo</td></tr></tbody></table>
+!! html/parsoid
 <link rel="mw:PageProp/Category" href="./Category:Foo1"><table><tbody><tr><td>foo</td></tr></tbody></table>
 <!--Two categories (T52330)-->
 <link rel="mw:PageProp/Category" href="./Category:Bar1"><link rel="mw:PageProp/Category" href="./Category:Bar2"><table><tbody><tr><td>foo</td></tr></tbody></table>
@@ -13513,11 +13651,11 @@ Templates: Wiki Tables: 7. Fosterable <ref>s should get fostered
 
 <references />
 !! html/parsoid
-<p about="#mwt2" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"PartialTable","href":"./Template:PartialTable"},"params":{},"i":0}},"&lt;ref>foo&lt;/ref>\n|}"]}'><sup about="#mwt3" class="mw-ref" id="cite_ref-1" rel="dc:references" typeof="mw:Extension/ref" data-mw='{"name":"ref","attrs":{},"body":{"id":"mw-reference-text-cite_note-1"}}'><a href="./Main_Page#cite_note-1" style="counter-reset: mw-Ref 1;"><span class="mw-reflink-text">[1]</span></a></sup></p><table about="#mwt2">
+<p about="#mwt2" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"PartialTable","href":"./Template:PartialTable"},"params":{},"i":0}},"&lt;ref>foo&lt;/ref>\n|}"]}'><sup about="#mwt3" class="mw-ref" id="cite_ref-1" rel="dc:references" typeof="mw:Extension/ref" data-mw='{"name":"ref","attrs":{},"body":{"id":"mw-reference-text-cite_note-1"}}'><a href="./Parser_test#cite_note-1" style="counter-reset: mw-Ref 1;"><span class="mw-reflink-text">[1]</span></a></sup></p><table about="#mwt2">
 <tbody>
 </tbody></table>
 
-<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt5" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Main_Page#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text">foo</span></li></ol>
+<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt5" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Parser_test#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text">foo</span></li></ol>
 !! end
 
 !! test
@@ -13578,7 +13716,9 @@ Templates: Ugly nesting: 3. Quotes opened/closed across templates (echo_with_div
 parsoid=wt2html,wt2wt
 !! wikitext
 {{echo_with_div|''a}}{{echo_with_div|b''c''d}}{{echo_with_div|''e}}
-!! html
+!! html/php+tidy
+<div><i>a</i></div><div><i>b</i>c<i>d</i></div><div>e</div>
+!! html/parsoid
 <div about="#mwt1" typeof="mw:Transclusion" data-mw="{&quot;parts&quot;:[{&quot;template&quot;:{&quot;target&quot;:{&quot;wt&quot;:&quot;echo_with_div&quot;,&quot;href&quot;:&quot;./Template:Echo_with_div&quot;},&quot;params&quot;:{&quot;1&quot;:{&quot;wt&quot;:&quot;''a&quot;}},&quot;i&quot;:0}}]}"><i>a</i></div>
 <div about="#mwt2" typeof="mw:Transclusion" data-mw="{&quot;parts&quot;:[{&quot;template&quot;:{&quot;target&quot;:{&quot;wt&quot;:&quot;echo_with_div&quot;,&quot;href&quot;:&quot;./Template:Echo_with_div&quot;},&quot;params&quot;:{&quot;1&quot;:{&quot;wt&quot;:&quot;b''c''d&quot;}},&quot;i&quot;:0}}]}"><i>b</i>c<i>d</i></div>
 <div about="#mwt3" typeof="mw:Transclusion" data-mw="{&quot;parts&quot;:[{&quot;template&quot;:{&quot;target&quot;:{&quot;wt&quot;:&quot;echo_with_div&quot;,&quot;href&quot;:&quot;./Template:Echo_with_div&quot;},&quot;params&quot;:{&quot;1&quot;:{&quot;wt&quot;:&quot;''e&quot;}},&quot;i&quot;:0}}]}">e</div>
@@ -13691,6 +13831,7 @@ Parser Functions: 2. Nested use (only outermost should be marked up)
 !! test
 Template nested in extension tag in template
 !! options
+title=[[Main Page]]
 language=zh
 !! wikitext
 {{echo|hi<ref>[[ho|{{echo|hi}}]]</ref>}}
@@ -13698,10 +13839,10 @@ language=zh
 {{echo|hi<ref>-{ho|{{echo|hi}}}-</ref>}}
 <references />
 !! html/parsoid
-<p><span about="#mwt2" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"hi&lt;ref>[[ho|{{echo|hi}}]]&lt;/ref>"}},"i":0}}]}'>hi</span><sup about="#mwt2" class="mw-ref" id="cite_ref-1" rel="dc:references" typeof="mw:Extension/ref" data-mw='{"name":"ref","attrs":{},"body":{"id":"mw-reference-text-cite_note-1"}}'><a href="./Wikipedia:首页#cite_note-1" style="counter-reset: mw-Ref 1;"><span class="mw-reflink-text">[1]</span></a></sup>
-<span about="#mwt8" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"hi&lt;ref>[http://test.com?q={{echo|ho}}]&lt;/ref>"}},"i":0}}]}'>hi</span><sup about="#mwt8" class="mw-ref" id="cite_ref-2" rel="dc:references" typeof="mw:Extension/ref" data-mw='{"name":"ref","attrs":{},"body":{"id":"mw-reference-text-cite_note-2"}}'><a href="./Wikipedia:首页#cite_note-2" style="counter-reset: mw-Ref 2;"><span class="mw-reflink-text">[2]</span></a></sup>
-<span about="#mwt13" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"hi&lt;ref>-{ho|{{echo|hi}}}-&lt;/ref>"}},"i":0}}]}'>hi</span><sup about="#mwt13" class="mw-ref" id="cite_ref-3" rel="dc:references" typeof="mw:Extension/ref" data-mw='{"name":"ref","attrs":{},"body":{"id":"mw-reference-text-cite_note-3"}}'><a href="./Wikipedia:首页#cite_note-3" style="counter-reset: mw-Ref 3;"><span class="mw-reflink-text">[3]</span></a></sup></p>
-<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt17" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Wikipedia:首页#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text"><a rel="mw:WikiLink" href="./Ho" title="Ho">hi</a></span></li><li about="#cite_note-2" id="cite_note-2"><a href="./Wikipedia:首页#cite_ref-2" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-2" class="mw-reference-text"><a rel="mw:ExtLink" class="external autonumber" href="http://test.com?q=ho"></a></span></li><li about="#cite_note-3" id="cite_note-3"><a href="./Wikipedia:首页#cite_ref-3" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-3" class="mw-reference-text"><span typeof="mw:LanguageVariant" data-mw-variant='{"filter":{"l":["ho"],"t":"hi"}}'></span></span></li></ol>
+<p><span about="#mwt2" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"hi&lt;ref>[[ho|{{echo|hi}}]]&lt;/ref>"}},"i":0}}]}'>hi</span><sup about="#mwt2" class="mw-ref" id="cite_ref-1" rel="dc:references" typeof="mw:Extension/ref" data-mw='{"name":"ref","attrs":{},"body":{"id":"mw-reference-text-cite_note-1"}}'><a href="./Main_Page#cite_note-1" style="counter-reset: mw-Ref 1;"><span class="mw-reflink-text">[1]</span></a></sup>
+<span about="#mwt8" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"hi&lt;ref>[http://test.com?q={{echo|ho}}]&lt;/ref>"}},"i":0}}]}'>hi</span><sup about="#mwt8" class="mw-ref" id="cite_ref-2" rel="dc:references" typeof="mw:Extension/ref" data-mw='{"name":"ref","attrs":{},"body":{"id":"mw-reference-text-cite_note-2"}}'><a href="./Main_Page#cite_note-2" style="counter-reset: mw-Ref 2;"><span class="mw-reflink-text">[2]</span></a></sup>
+<span about="#mwt13" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"hi&lt;ref>-{ho|{{echo|hi}}}-&lt;/ref>"}},"i":0}}]}'>hi</span><sup about="#mwt13" class="mw-ref" id="cite_ref-3" rel="dc:references" typeof="mw:Extension/ref" data-mw='{"name":"ref","attrs":{},"body":{"id":"mw-reference-text-cite_note-3"}}'><a href="./Main_Page#cite_note-3" style="counter-reset: mw-Ref 3;"><span class="mw-reflink-text">[3]</span></a></sup></p>
+<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt17" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Main_Page#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text"><a rel="mw:WikiLink" href="./Ho" title="Ho">hi</a></span></li><li about="#cite_note-2" id="cite_note-2"><a href="./Main_Page#cite_ref-2" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-2" class="mw-reference-text"><a rel="mw:ExtLink" class="external autonumber" href="http://test.com?q=ho"></a></span></li><li about="#cite_note-3" id="cite_note-3"><a href="./Main_Page#cite_ref-3" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-3" class="mw-reference-text"><span typeof="mw:LanguageVariant" data-mw-variant='{"filter":{"l":["ho"],"t":"hi"}}'></span></span></li></ol>
 !! end
 
 ###
@@ -14286,7 +14427,10 @@ Parsoid: Recognize nowiki with odd capitalization
 parsoid=wt2html
 !! wikitext
 <noWikI ><div>[[foo]]</Nowiki >
-!! html
+!! html/php+tidy
+<p>&lt;div&gt;[[foo]]
+</p>
+!! html/parsoid
 <p><span typeof="mw:Nowiki">&lt;div&gt;[[foo]]</span></p>
 !! end
 
@@ -15002,6 +15146,337 @@ Alt image option should handle most kinds of wikitext without barfing
 !! end
 
 !! test
+Ampersand in alt attribute (T206940)
+!! options
+parsoid = {
+  "nativeGallery": true
+}
+!! wikitext
+[[File:Foobar.jpg|alt=&amp;amp;]]
+
+<!-- consistency with gallery extension -->
+<gallery>
+File:Foobar.jpg|alt=&amp;amp;
+</gallery>
+!! html/php+tidy
+<p><a href="/wiki/File:Foobar.jpg" class="image"><img alt="&amp;amp;" src="http://example.com/images/3/3a/Foobar.jpg" width="1941" height="220" /></a>
+</p>
+<ul class="gallery mw-gallery-traditional">
+		<li class="gallerybox" style="width: 155px"><div style="width: 155px">
+			<div class="thumb" style="width: 150px;"><div style="margin:68px auto;"><a href="/wiki/File:Foobar.jpg" class="image"><img alt="&amp;amp;" src="http://example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" width="120" height="14" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/240px-Foobar.jpg 2x" /></a></div></div>
+			<div class="gallerytext">
+			</div>
+		</div></li>
+</ul>
+!! html/parsoid
+<p><figure-inline class="mw-default-size" typeof="mw:Image"><a href="./File:Foobar.jpg"><img alt="&amp;amp;" resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941"/></a></figure-inline></p>
+
+<!-- consistency with gallery extension -->
+<ul class="gallery mw-gallery-traditional" typeof="mw:Extension/gallery" data-mw='{"name":"gallery","attrs":{},"body":{}}'>
+<li class="gallerybox">
+<div class="thumb"><figure-inline typeof="mw:Image"><a href="./File:Foobar.jpg"><img alt="&amp;amp;" resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="14" width="120"/></a></figure-inline></div>
+<div class="gallerytext"></div>
+</li>
+</ul>
+!! end
+
+!! test
+Italics markup in alt attribute (T206940)
+!! wikitext
+[[File:Foobar.jpg|alt=''x''|caption]]
+
+<!-- consistency with gallery extension -->
+<gallery>
+File:Foobar.jpg|alt=''x''|caption
+</gallery>
+!! html/php+tidy
+<p><a href="/wiki/File:Foobar.jpg" class="image" title="caption"><img alt="x" src="http://example.com/images/3/3a/Foobar.jpg" width="1941" height="220" /></a>
+</p>
+<ul class="gallery mw-gallery-traditional">
+		<li class="gallerybox" style="width: 155px"><div style="width: 155px">
+			<div class="thumb" style="width: 150px;"><div style="margin:68px auto;"><a href="/wiki/File:Foobar.jpg" class="image"><img alt="x" src="http://example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" width="120" height="14" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/240px-Foobar.jpg 2x" /></a></div></div>
+			<div class="gallerytext">
+<p>caption
+</p>
+			</div>
+		</div></li>
+</ul>
+!! html/parsoid
+<p><figure-inline class="mw-default-size" typeof="mw:Image" data-parsoid='{"optList":[{"ck":"alt","ak":"alt=&apos;&apos;x&apos;&apos;"},{"ck":"caption","ak":"caption"}]}' data-mw='{"caption":"caption"}'><a href="./File:Foobar.jpg"><img alt="x" resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941" data-parsoid='{"a":{"alt":"x","resource":"./File:Foobar.jpg","height":"220","width":"1941"},"sa":{"alt":"alt=&apos;&apos;x&apos;&apos;","resource":"File:Foobar.jpg"}}'/></a></figure-inline></p>
+
+<!-- consistency with gallery extension -->
+<ul class="gallery mw-gallery-traditional" typeof="mw:Extension/gallery" about="#mwt2" data-mw='{"name":"gallery","attrs":{},"body":{"extsrc":"\nFile:Foobar.jpg|alt=&apos;&apos;x&apos;&apos;|caption\n"}}'>
+<li class="gallerybox">
+<div class="thumb"><figure-inline typeof="mw:Image"><a href="./File:Foobar.jpg"><img alt="x" resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="14" width="120"/></a></figure-inline></div>
+<div class="gallerytext">caption</div>
+</li>
+</ul>
+!! end
+
+!! test
+Nowiki markup in alt attribute (T206940)
+!! wikitext
+[[File:Foobar.jpg|alt=<nowiki>''</nowiki>x<nowiki>''</nowiki>|caption]]
+
+<!-- consistency with gallery extension -->
+<gallery>
+File:Foobar.jpg|alt=<nowiki>''</nowiki>x<nowiki>''</nowiki>|caption
+</gallery>
+!! html/php+tidy
+<p><a href="/wiki/File:Foobar.jpg" class="image" title="caption"><img alt="&#39;&#39;x&#39;&#39;" src="http://example.com/images/3/3a/Foobar.jpg" width="1941" height="220" /></a>
+</p>
+<ul class="gallery mw-gallery-traditional">
+		<li class="gallerybox" style="width: 155px"><div style="width: 155px">
+			<div class="thumb" style="width: 150px;"><div style="margin:68px auto;"><a href="/wiki/File:Foobar.jpg" class="image"><img alt="&#39;&#39;x&#39;&#39;" src="http://example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" width="120" height="14" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/240px-Foobar.jpg 2x" /></a></div></div>
+			<div class="gallerytext">
+<p>caption
+</p>
+			</div>
+		</div></li>
+</ul>
+!! html/parsoid
+<p><figure-inline class="mw-default-size" typeof="mw:Image" data-parsoid='{"optList":[{"ck":"alt","ak":"alt=&lt;nowiki>&apos;&apos;&lt;/nowiki>x&lt;nowiki>&apos;&apos;&lt;/nowiki>"},{"ck":"caption","ak":"caption"}],"dsr":[0,71,null,null]}' data-mw='{"caption":"caption"}'><a href="./File:Foobar.jpg"><img alt="''x''" resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941" data-parsoid='{"a":{"alt":"&apos;&apos;x&apos;&apos;","resource":"./File:Foobar.jpg","height":"220","width":"1941"},"sa":{"alt":"alt=&lt;nowiki>&apos;&apos;&lt;/nowiki>x&lt;nowiki>&apos;&apos;&lt;/nowiki>","resource":"File:Foobar.jpg"}}'/></a></figure-inline></p>
+
+<!-- consistency with gallery extension -->
+<ul class="gallery mw-gallery-traditional" typeof="mw:Extension/gallery" data-mw='{"name":"gallery","attrs":{},"body":{"extsrc":"\nFile:Foobar.jpg|alt=&lt;nowiki>&apos;&apos;&lt;/nowiki>x&lt;nowiki>&apos;&apos;&lt;/nowiki>|caption\n"}}'>
+<li class="gallerybox">
+<div class="thumb"><figure-inline typeof="mw:Image"><a href="./File:Foobar.jpg"><img alt="''x''" resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="14" width="120"/></a></figure-inline></div>
+<div class="gallerytext">caption</div>
+</li>
+</ul>
+!! end
+
+!! test
+Nowiki markup in alt attribute (edited html, no data-parsoid) (T206940)
+!! options
+parsoid = {
+  "nativeGallery": true
+}
+!! wikitext
+[[File:Foobar.jpg|alt=<nowiki>''x''</nowiki>|caption]]
+
+<!-- consistency with gallery extension -->
+<gallery>
+File:Foobar.jpg|alt=<nowiki>''x''</nowiki>|caption
+</gallery>
+!! html/php+tidy
+<p><a href="/wiki/File:Foobar.jpg" class="image" title="caption"><img alt="&#39;&#39;x&#39;&#39;" src="http://example.com/images/3/3a/Foobar.jpg" width="1941" height="220" /></a>
+</p>
+<ul class="gallery mw-gallery-traditional">
+		<li class="gallerybox" style="width: 155px"><div style="width: 155px">
+			<div class="thumb" style="width: 150px;"><div style="margin:68px auto;"><a href="/wiki/File:Foobar.jpg" class="image"><img alt="&#39;&#39;x&#39;&#39;" src="http://example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" width="120" height="14" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/240px-Foobar.jpg 2x" /></a></div></div>
+			<div class="gallerytext">
+<p>caption
+</p>
+			</div>
+		</div></li>
+</ul>
+!! html/parsoid
+<p><figure-inline class="mw-default-size" typeof="mw:Image" data-mw='{"caption":"caption"}'><a href="./File:Foobar.jpg"><img alt="''x''" resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941"/></a></figure-inline></p>
+
+<!-- consistency with gallery extension -->
+<ul class="gallery mw-gallery-traditional" typeof="mw:Extension/gallery" data-mw='{"name":"gallery","attrs":{},"body":{}}'>
+<li class="gallerybox">
+<div class="thumb"><figure-inline typeof="mw:Image"><a href="./File:Foobar.jpg"><img alt="''x''" resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="14" width="120"/></a></figure-inline></div>
+<div class="gallerytext">caption</div>
+</li>
+</ul>
+!! end
+
+!! test
+Ampersand in link attribute (T206940)
+!! wikitext
+[[File:Foobar.jpg|link=Foo &amp; bar]]
+
+<!-- consistency with gallery extension -->
+<gallery>
+File:Foobar.jpg|link=Foo &amp; bar
+</gallery>
+!! html/php+tidy
+<p><a href="/wiki/Foo_%26_bar" title="Foo &amp; bar"><img alt="Foobar.jpg" src="http://example.com/images/3/3a/Foobar.jpg" width="1941" height="220" /></a>
+</p>
+<ul class="gallery mw-gallery-traditional">
+		<li class="gallerybox" style="width: 155px"><div style="width: 155px">
+			<div class="thumb" style="width: 150px;"><div style="margin:68px auto;"><a href="/wiki/Foo_%26_bar"><img alt="Foobar.jpg" src="http://example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" width="120" height="14" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/240px-Foobar.jpg 2x" /></a></div></div>
+			<div class="gallerytext">
+			</div>
+		</div></li>
+</ul>
+!! html/parsoid
+<p><figure-inline class="mw-default-size" typeof="mw:Image" data-parsoid='{"optList":[{"ck":"link","ak":"link=Foo &amp;amp; bar"}]}'><a href="./Foo_&amp;_bar" data-parsoid='{"a":{"href":"./Foo_&amp;_bar"},"sa":{"href":"link=Foo &amp;amp; bar"}}'><img resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941"/></a></figure-inline></p>
+
+<!-- consistency with gallery extension -->
+<ul class="gallery mw-gallery-traditional" typeof="mw:Extension/gallery" data-mw='{"name":"gallery","attrs":{},"body":{"extsrc":"\nFile:Foobar.jpg|link=Foo &amp;amp; bar\n"}}'>
+<li class="gallerybox">
+<div class="thumb"><figure-inline typeof="mw:Image"><a href="./Foo_&amp;_bar"><img resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="14" width="120"/></a></figure-inline></div>
+<div class="gallerytext"></div>
+</li>
+</ul>
+!! end
+
+!! test
+Ampersand in link attribute (edited html, no data-parsoid) (T206940)
+!! options
+parsoid = {
+  "nativeGallery": true
+}
+!! wikitext
+[[File:Foobar.jpg|link=Foo_&_bar]]
+
+<!-- consistency with gallery extension -->
+<gallery>
+File:Foobar.jpg|link=Foo_&_bar
+</gallery>
+!! html/php+tidy
+<p><a href="/wiki/Foo_%26_bar" title="Foo &amp; bar"><img alt="Foobar.jpg" src="http://example.com/images/3/3a/Foobar.jpg" width="1941" height="220" /></a>
+</p>
+<ul class="gallery mw-gallery-traditional">
+		<li class="gallerybox" style="width: 155px"><div style="width: 155px">
+			<div class="thumb" style="width: 150px;"><div style="margin:68px auto;"><a href="/wiki/Foo_%26_bar"><img alt="Foobar.jpg" src="http://example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" width="120" height="14" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/240px-Foobar.jpg 2x" /></a></div></div>
+			<div class="gallerytext">
+			</div>
+		</div></li>
+</ul>
+!! html/parsoid
+<p><figure-inline class="mw-default-size" typeof="mw:Image"><a href="./Foo_&amp;_bar"><img resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941"/></a></figure-inline></p>
+
+<!-- consistency with gallery extension -->
+<ul class="gallery mw-gallery-traditional" typeof="mw:Extension/gallery" data-mw='{"name":"gallery","attrs":{},"body":{}}'>
+<li class="gallerybox">
+<div class="thumb"><figure-inline typeof="mw:Image"><a href="./Foo_&amp;_bar"><img resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="14" width="120"/></a></figure-inline></div>
+<div class="gallerytext"></div>
+</li>
+</ul>
+!! end
+
+!! test
+Italics markup in link attribute (T206940)
+!! wikitext
+[[Foo''s bar''s]]
+
+<!-- Note that "italics" are stripped, even though this is a valid page title -->
+[[File:Foobar.jpg|link=Foo''s bar''s|caption1]]
+
+[[File:Foobar.jpg|link=''Main Page''|caption2]]
+
+<!-- consistency with gallery extension -->
+<gallery>
+File:Foobar.jpg|link=Foo''s bar''s|caption1
+File:Foobar.jpg|link=''Main Page''|caption2
+</gallery>
+!! html/php+tidy
+<p><a href="/wiki/Foo%27%27s_bar%27%27s" title="Foo&#39;&#39;s bar&#39;&#39;s">Foo''s bar''s</a>
+</p><p><a href="/wiki/Foos_bars" title="caption1"><img alt="caption1" src="http://example.com/images/3/3a/Foobar.jpg" width="1941" height="220" /></a>
+</p><p><a href="/wiki/Main_Page" title="caption2"><img alt="caption2" src="http://example.com/images/3/3a/Foobar.jpg" width="1941" height="220" /></a>
+</p>
+<ul class="gallery mw-gallery-traditional">
+		<li class="gallerybox" style="width: 155px"><div style="width: 155px">
+			<div class="thumb" style="width: 150px;"><div style="margin:68px auto;"><a href="/wiki/Foos_bars"><img alt="" src="http://example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" width="120" height="14" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/240px-Foobar.jpg 2x" /></a></div></div>
+			<div class="gallerytext">
+<p>caption1
+</p>
+			</div>
+		</div></li>
+		<li class="gallerybox" style="width: 155px"><div style="width: 155px">
+			<div class="thumb" style="width: 150px;"><div style="margin:68px auto;"><a href="/wiki/Main_Page"><img alt="" src="http://example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" width="120" height="14" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/240px-Foobar.jpg 2x" /></a></div></div>
+			<div class="gallerytext">
+<p>caption2
+</p>
+			</div>
+		</div></li>
+</ul>
+!! html/parsoid
+<p><a rel="mw:WikiLink" href="./Foo''s_bar''s" title="Foo''s bar''s">Foo''s bar''s</a></p>
+
+<!-- Note that "italics" are stripped, even though this is a valid page title -->
+<p><figure-inline class="mw-default-size" typeof="mw:Image" data-parsoid='{"optList":[{"ck":"link","ak":"link=Foo&apos;&apos;s bar&apos;&apos;s"},{"ck":"caption","ak":"caption1"}]}' data-mw='{"caption":"caption1"}'><a href="./Foos_bars" data-parsoid='{"a":{"href":"./Foos_bars"},"sa":{"href":"link=Foo&apos;&apos;s bar&apos;&apos;s"}}'><img resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941" data-parsoid='{"a":{"resource":"./File:Foobar.jpg","height":"220","width":"1941"},"sa":{"resource":"File:Foobar.jpg"}}'/></a></figure-inline></p>
+
+<p><figure-inline class="mw-default-size" typeof="mw:Image" data-parsoid='{"optList":[{"ck":"link","ak":"link=&apos;&apos;Main Page&apos;&apos;"},{"ck":"caption","ak":"caption2"}]}' data-mw='{"caption":"caption2"}'><a href="./Main_Page" data-parsoid='{"a":{"href":"./Main_Page"},"sa":{"href":"link=&apos;&apos;Main Page&apos;&apos;"}}'><img resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941" data-parsoid='{"a":{"resource":"./File:Foobar.jpg","height":"220","width":"1941"},"sa":{"resource":"File:Foobar.jpg"}}'/></a></figure-inline></p>
+
+<!-- consistency with gallery extension -->
+<ul class="gallery mw-gallery-traditional" typeof="mw:Extension/gallery" data-mw='{"name":"gallery","attrs":{},"body":{"extsrc":"\nFile:Foobar.jpg|link=Foo&apos;&apos;s bar&apos;&apos;s|caption1\nFile:Foobar.jpg|link=&apos;&apos;Main Page&apos;&apos;|caption2\n"}}'>
+<li class="gallerybox">
+<div class="thumb"><figure-inline typeof="mw:Image"><a href="./Foos_bars"><img resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="14" width="120"/></a></figure-inline></div>
+<div class="gallerytext">caption1</div>
+</li>
+<li class="gallerybox">
+<div class="thumb"><figure-inline typeof="mw:Image"><a href="./Main_Page"><img resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="14" width="120"/></a></figure-inline></div>
+<div class="gallerytext">caption2</div>
+</li>
+</ul>
+!! end
+
+!! test
+Nowiki markup in link attribute (T206940)
+!! wikitext
+[[File:Foobar.jpg|link=Foo<nowiki>''</nowiki>s_bar<nowiki>''</nowiki>s|caption]]
+
+<!-- consistency with gallery extension -->
+<gallery>
+File:Foobar.jpg|link=Foo<nowiki>''</nowiki>s_bar<nowiki>''</nowiki>s|caption
+</gallery>
+!! html/php+tidy
+<p><a href="/wiki/Foo%27%27s_bar%27%27s" title="caption"><img alt="caption" src="http://example.com/images/3/3a/Foobar.jpg" width="1941" height="220" /></a>
+</p>
+<ul class="gallery mw-gallery-traditional">
+		<li class="gallerybox" style="width: 155px"><div style="width: 155px">
+			<div class="thumb" style="width: 150px;"><div style="margin:68px auto;"><a href="/wiki/Foo%27%27s_bar%27%27s"><img alt="" src="http://example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" width="120" height="14" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/240px-Foobar.jpg 2x" /></a></div></div>
+			<div class="gallerytext">
+<p>caption
+</p>
+			</div>
+		</div></li>
+</ul>
+!! html/parsoid
+<p><figure-inline class="mw-default-size" typeof="mw:Image" data-parsoid='{"optList":[{"ck":"link","ak":"link=Foo&lt;nowiki>&apos;&apos;&lt;/nowiki>s_bar&lt;nowiki>&apos;&apos;&lt;/nowiki>s"},{"ck":"caption","ak":"caption"}]}' data-mw='{"caption":"caption"}'><a href="./Foo''s_bar''s" data-parsoid='{"a":{"href":"./Foo&apos;&apos;s_bar&apos;&apos;s"},"sa":{"href":"link=Foo&lt;nowiki>&apos;&apos;&lt;/nowiki>s_bar&lt;nowiki>&apos;&apos;&lt;/nowiki>s"}}'><img resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941" data-parsoid='{"a":{"resource":"./File:Foobar.jpg","height":"220","width":"1941"},"sa":{"resource":"File:Foobar.jpg"}}'/></a></figure-inline></p>
+
+<!-- consistency with gallery extension -->
+<ul class="gallery mw-gallery-traditional" typeof="mw:Extension/gallery" data-mw='{"name":"gallery","attrs":{},"body":{"extsrc":"\nFile:Foobar.jpg|link=Foo&lt;nowiki>&apos;&apos;&lt;/nowiki>s_bar&lt;nowiki>&apos;&apos;&lt;/nowiki>s|caption\n"}}'>
+<li class="gallerybox">
+<div class="thumb"><figure-inline typeof="mw:Image"><a href="./Foo''s_bar''s"><img resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="14" width="120"/></a></figure-inline></div>
+<div class="gallerytext">caption</div>
+</li>
+</ul>
+!! end
+
+!! test
+Nowiki markup in link attribute (edited html, no data-parsoid) (T206940)
+!! options
+parsoid = {
+  "nativeGallery": true
+}
+!! wikitext
+[[File:Foobar.jpg|link=Foo<nowiki>''s_bar''</nowiki>s|caption]]
+
+<!-- consistency with gallery extension -->
+<gallery>
+File:Foobar.jpg|link=Foo<nowiki>''s_bar''</nowiki>s|caption
+</gallery>
+!! html/php+tidy
+<p><a href="/wiki/Foo%27%27s_bar%27%27s" title="caption"><img alt="caption" src="http://example.com/images/3/3a/Foobar.jpg" width="1941" height="220" /></a>
+</p>
+<ul class="gallery mw-gallery-traditional">
+		<li class="gallerybox" style="width: 155px"><div style="width: 155px">
+			<div class="thumb" style="width: 150px;"><div style="margin:68px auto;"><a href="/wiki/Foo%27%27s_bar%27%27s"><img alt="" src="http://example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" width="120" height="14" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/240px-Foobar.jpg 2x" /></a></div></div>
+			<div class="gallerytext">
+<p>caption
+</p>
+			</div>
+		</div></li>
+</ul>
+!! html/parsoid
+<p><figure-inline class="mw-default-size" typeof="mw:Image" data-mw='{"caption":"caption"}'><a href="./Foo''s_bar''s"><img resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941"/></a></figure-inline></p>
+
+<!-- consistency with gallery extension -->
+<ul class="gallery mw-gallery-traditional" typeof="mw:Extension/gallery" data-mw='{"name":"gallery","attrs":{},"body":{}}'>
+<li class="gallerybox">
+<div class="thumb"><figure-inline typeof="mw:Image"><a href="./Foo''s_bar''s"><img resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/120px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="14" width="120"/></a></figure-inline></div>
+<div class="gallerytext">caption</div>
+</li>
+</ul>
+!! end
+
+!! test
 Image with table with attributes in caption
 !! options
 parsoid=wt2html,html2html
@@ -15368,6 +15843,30 @@ parsoid=wt2html,wt2wt,html2html
 
 !! html/parsoid
 <figure class="mw-default-size" typeof="mw:Image/Thumb"><a href="./File:Foobar.svg"><img resource="./File:Foobar.svg" src="//example.com/images/thumb/f/ff/Foobar.svg/220px-Foobar.svg.png" data-file-width="240" data-file-height="180" data-file-type="drawing" height="165" width="220"/></a><figcaption>lang=invalid:language:code</figcaption></figure>
+!! end
+
+!! test
+SVG thumbnails in page language
+!! options
+language=ru
+wgMediaInTargetLanguage = true
+!! wikitext
+[[File:Foobar.svg]] [[File:Foobar.svg|lang=en]]
+!! html/php
+<p><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Foobar.svg" class="image"><img alt="Foobar.svg" src="http://example.com/images/thumb/f/ff/Foobar.svg/langru-240px-Foobar.svg.png" width="240" height="180" srcset="http://example.com/images/thumb/f/ff/Foobar.svg/langru-360px-Foobar.svg.png 1.5x, http://example.com/images/thumb/f/ff/Foobar.svg/langru-480px-Foobar.svg.png 2x" /></a> <a href="/index.php?title=%D0%A4%D0%B0%D0%B9%D0%BB:Foobar.svg&amp;lang=en" class="image"><img alt="Foobar.svg" src="http://example.com/images/thumb/f/ff/Foobar.svg/240px-Foobar.svg.png" width="240" height="180" srcset="http://example.com/images/thumb/f/ff/Foobar.svg/360px-Foobar.svg.png 1.5x, http://example.com/images/thumb/f/ff/Foobar.svg/480px-Foobar.svg.png 2x" /></a>
+</p>
+!! end
+
+!! test
+SVG thumbnails in page language not present in the file
+!! options
+language=de
+wgMediaInTargetLanguage = true
+!! wikitext
+[[File:Foobar.svg]] [[File:Foobar.svg|lang=ru]]
+!! html/php
+<p><a href="/wiki/Datei:Foobar.svg" class="image"><img alt="Foobar.svg" src="http://example.com/images/thumb/f/ff/Foobar.svg/240px-Foobar.svg.png" width="240" height="180" srcset="http://example.com/images/thumb/f/ff/Foobar.svg/360px-Foobar.svg.png 1.5x, http://example.com/images/thumb/f/ff/Foobar.svg/480px-Foobar.svg.png 2x" /></a> <a href="/index.php?title=Datei:Foobar.svg&amp;lang=ru" class="image"><img alt="Foobar.svg" src="http://example.com/images/thumb/f/ff/Foobar.svg/langru-240px-Foobar.svg.png" width="240" height="180" srcset="http://example.com/images/thumb/f/ff/Foobar.svg/langru-360px-Foobar.svg.png 1.5x, http://example.com/images/thumb/f/ff/Foobar.svg/langru-480px-Foobar.svg.png 2x" /></a>
+</p>
 !! end
 
 !! test
@@ -15924,9 +16423,9 @@ T93580: 1. Templated <ref> inside block images
 
 <references />
 !! html/parsoid
-<figure class="mw-default-size" typeof="mw:Image/Thumb" data-parsoid='{"optList":[{"ck":"thumbnail","ak":"thumb"},{"ck":"caption","ak":"Caption with templated ref: {{echo|&lt;ref>foo&lt;/ref>}}"}]}'><a href="./File:Foobar.jpg" data-parsoid='{"a":{"href":"./File:Foobar.jpg"},"sa":{}}'><img resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/220px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="25" width="220" data-parsoid='{"a":{"resource":"./File:Foobar.jpg","height":"25","width":"220"},"sa":{"resource":"File:Foobar.jpg"}}'/></a><figcaption>Caption with templated ref: <sup about="#mwt5" class="mw-ref" id="cite_ref-1" rel="dc:references" typeof="mw:Transclusion  mw:Extension/ref" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"&lt;ref>foo&lt;/ref>"}},"i":0}}]}'><a href="./Main_Page#cite_note-1" style="counter-reset: mw-Ref 1;"><span class="mw-reflink-text">[1]</span></a></sup></figcaption></figure>
+<figure class="mw-default-size" typeof="mw:Image/Thumb" data-parsoid='{"optList":[{"ck":"thumbnail","ak":"thumb"},{"ck":"caption","ak":"Caption with templated ref: {{echo|&lt;ref>foo&lt;/ref>}}"}]}'><a href="./File:Foobar.jpg" data-parsoid='{"a":{"href":"./File:Foobar.jpg"},"sa":{}}'><img resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/220px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="25" width="220" data-parsoid='{"a":{"resource":"./File:Foobar.jpg","height":"25","width":"220"},"sa":{"resource":"File:Foobar.jpg"}}'/></a><figcaption>Caption with templated ref: <sup about="#mwt5" class="mw-ref" id="cite_ref-1" rel="dc:references" typeof="mw:Transclusion  mw:Extension/ref" data-mw='{"parts":[{"template":{"target":{"wt":"echo","href":"./Template:Echo"},"params":{"1":{"wt":"&lt;ref>foo&lt;/ref>"}},"i":0}}]}'><a href="./Parser_test#cite_note-1" style="counter-reset: mw-Ref 1;"><span class="mw-reflink-text">[1]</span></a></sup></figcaption></figure>
 
-<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt6" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Main_Page#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text" data-parsoid="{}">foo</span></li></ol>
+<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt6" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Parser_test#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text" data-parsoid="{}">foo</span></li></ol>
 !! end
 
 !! test
@@ -15936,9 +16435,9 @@ T93580: 2. <ref> inside inline images
 
 <references />
 !! html/parsoid
-<p><figure-inline class="mw-default-size" typeof="mw:Image" data-parsoid='{"optList":[{"ck":"caption","ak":"Undisplayed caption in inline image with ref: &lt;ref>foo&lt;/ref>"}]}' data-mw='{"caption":"Undisplayed caption in inline image with ref: &lt;sup about=\"#mwt2\" class=\"mw-ref\" id=\"cite_ref-1\" rel=\"dc:references\" typeof=\"mw:Extension/ref\" data-parsoid=&#39;{\"dsr\":[64,78,5,6]}&#39; data-mw=&#39;{\"name\":\"ref\",\"attrs\":{},\"body\":{\"id\":\"mw-reference-text-cite_note-1\"}}&#39;>&lt;a href=\"./Main_Page#cite_note-1\" style=\"counter-reset: mw-Ref 1;\" data-parsoid=\"{}\">&lt;span class=\"mw-reflink-text\" data-parsoid=\"{}\">[1]&lt;/span>&lt;/a>&lt;/sup>"}'><a href="./File:Foobar.jpg" data-parsoid='{"a":{"href":"./File:Foobar.jpg"},"sa":{"href":"File:Foobar.jpg"}}'><img resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941" data-parsoid='{"a":{"resource":"./File:Foobar.jpg","height":"220","width":"1941"},"sa":{"resource":"File:Foobar.jpg"}}'/></a></figure-inline></p>
+<p><figure-inline class="mw-default-size" typeof="mw:Image" data-parsoid='{"optList":[{"ck":"caption","ak":"Undisplayed caption in inline image with ref: &lt;ref>foo&lt;/ref>"}]}' data-mw='{"caption":"Undisplayed caption in inline image with ref: &lt;sup about=\"#mwt2\" class=\"mw-ref\" id=\"cite_ref-1\" rel=\"dc:references\" typeof=\"mw:Extension/ref\" data-parsoid=&#39;{\"dsr\":[64,78,5,6]}&#39; data-mw=&#39;{\"name\":\"ref\",\"attrs\":{},\"body\":{\"id\":\"mw-reference-text-cite_note-1\"}}&#39;>&lt;a href=\"./Parser_test#cite_note-1\" style=\"counter-reset: mw-Ref 1;\" data-parsoid=\"{}\">&lt;span class=\"mw-reflink-text\" data-parsoid=\"{}\">[1]&lt;/span>&lt;/a>&lt;/sup>"}'><a href="./File:Foobar.jpg" data-parsoid='{"a":{"href":"./File:Foobar.jpg"},"sa":{"href":"File:Foobar.jpg"}}'><img resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941" data-parsoid='{"a":{"resource":"./File:Foobar.jpg","height":"220","width":"1941"},"sa":{"resource":"File:Foobar.jpg"}}'/></a></figure-inline></p>
 
-<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt4" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Main_Page#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text">foo</span></li></ol>
+<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt4" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Parser_test#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text">foo</span></li></ol>
 !! end
 
 !! test
@@ -15948,9 +16447,9 @@ T93580: 3. Templated <ref> inside inline images
 
 <references />
 !! html/parsoid
-<p><figure-inline class="mw-default-size" typeof="mw:Image" data-parsoid='{"optList":[{"ck":"caption","ak":"Undisplayed caption in inline image with ref: {{echo|&lt;ref>{{echo|foo}}&lt;/ref>}}"}]}' data-mw='{"caption":"Undisplayed caption in inline image with ref: &lt;sup about=\"#mwt2\" class=\"mw-ref\" id=\"cite_ref-1\" rel=\"dc:references\" typeof=\"mw:Transclusion  mw:Extension/ref\" data-parsoid=&#39;{\"dsr\":[64,96,null,null],\"pi\":[[{\"k\":\"1\"}]]}&#39; data-mw=&#39;{\"parts\":[{\"template\":{\"target\":{\"wt\":\"echo\",\"href\":\"./Template:Echo\"},\"params\":{\"1\":{\"wt\":\"&amp;lt;ref>{{echo|foo}}&amp;lt;/ref>\"}},\"i\":0}}]}&#39;>&lt;a href=\"./Main_Page#cite_note-1\" style=\"counter-reset: mw-Ref 1;\" data-parsoid=\"{}\">&lt;span class=\"mw-reflink-text\" data-parsoid=\"{}\">[1]&lt;/span>&lt;/a>&lt;/sup>"}'><a href="./File:Foobar.jpg" data-parsoid='{"a":{"href":"./File:Foobar.jpg"},"sa":{"href":"File:Foobar.jpg"}}'><img resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941" data-parsoid='{"a":{"resource":"./File:Foobar.jpg","height":"220","width":"1941"},"sa":{"resource":"File:Foobar.jpg"}}'/></a></figure-inline></p>
+<p><figure-inline class="mw-default-size" typeof="mw:Image" data-parsoid='{"optList":[{"ck":"caption","ak":"Undisplayed caption in inline image with ref: {{echo|&lt;ref>{{echo|foo}}&lt;/ref>}}"}]}' data-mw='{"caption":"Undisplayed caption in inline image with ref: &lt;sup about=\"#mwt2\" class=\"mw-ref\" id=\"cite_ref-1\" rel=\"dc:references\" typeof=\"mw:Transclusion  mw:Extension/ref\" data-parsoid=&#39;{\"dsr\":[64,96,null,null],\"pi\":[[{\"k\":\"1\"}]]}&#39; data-mw=&#39;{\"parts\":[{\"template\":{\"target\":{\"wt\":\"echo\",\"href\":\"./Template:Echo\"},\"params\":{\"1\":{\"wt\":\"&amp;lt;ref>{{echo|foo}}&amp;lt;/ref>\"}},\"i\":0}}]}&#39;>&lt;a href=\"./Parser_test#cite_note-1\" style=\"counter-reset: mw-Ref 1;\" data-parsoid=\"{}\">&lt;span class=\"mw-reflink-text\" data-parsoid=\"{}\">[1]&lt;/span>&lt;/a>&lt;/sup>"}'><a href="./File:Foobar.jpg" data-parsoid='{"a":{"href":"./File:Foobar.jpg"},"sa":{"href":"File:Foobar.jpg"}}'><img resource="./File:Foobar.jpg" src="//example.com/images/3/3a/Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="220" width="1941" data-parsoid='{"a":{"resource":"./File:Foobar.jpg","height":"220","width":"1941"},"sa":{"resource":"File:Foobar.jpg"}}'/></a></figure-inline></p>
 
-<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt6" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Main_Page#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text">foo</span></li></ol>
+<ol class="mw-references references" typeof="mw:Extension/references" about="#mwt6" data-mw='{"name":"references","attrs":{}}'><li about="#cite_note-1" id="cite_note-1"><a href="./Parser_test#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a> <span id="mw-reference-text-cite_note-1" class="mw-reference-text">foo</span></li></ol>
 !! end
 
 ###
@@ -16353,7 +16852,7 @@ parsoid=wt2html
 * So should this
 
 {{echo|[[Category:Foo]] and this should be part of the same list item}}
-!! html
+!! html/php+tidy
 <ul><li>This and this should be part of the same list item</li>
 <li>So should this and this should be part of the same list item</li></ul>
 !! html/parsoid
@@ -16566,13 +17065,15 @@ Category links with multiple namespaces
 
 !! test
 Parsoid: Serialize link to category page with colon escape
-!! options
-parsoid
 !! wikitext
 
 [[:Category:Foo]]
 [[:Category:Foo|Bar]]
-!! html
+!! html/php+tidy
+<p><a href="/index.php?title=Category:Foo&amp;action=edit&amp;redlink=1" class="new" title="Category:Foo (page does not exist)">Category:Foo</a>
+<a href="/index.php?title=Category:Foo&amp;action=edit&amp;redlink=1" class="new" title="Category:Foo (page does not exist)">Bar</a>
+</p>
+!! html/parsoid
 <p>
 <a rel="mw:WikiLink" href="./Category:Foo" title="Category:Foo">Category:Foo</a>
 <a rel="mw:WikiLink" href="./Category:Foo" title="Category:Foo">Bar</a>
@@ -16619,13 +17120,15 @@ x[[es:Foo]]y
 
 !! test
 Parsoid: Serialize link to file page with colon escape
-!! options
-parsoid
 !! wikitext
 
 [[:File:Foo.png]]
 [[:File:Foo.png|Bar]]
-!! html
+!! html/php+tidy
+<p><a href="/index.php?title=File:Foo.png&amp;action=edit&amp;redlink=1" class="new" title="File:Foo.png (page does not exist)">File:Foo.png</a>
+<a href="/index.php?title=File:Foo.png&amp;action=edit&amp;redlink=1" class="new" title="File:Foo.png (page does not exist)">Bar</a>
+</p>
+!! html/parsoid
 <p>
 <a rel="mw:WikiLink" href="./File:Foo.png" title="File:Foo.png">File:Foo.png</a>
 <a rel="mw:WikiLink" href="./File:Foo.png" title="File:Foo.png">Bar</a>
@@ -16634,12 +17137,11 @@ parsoid
 
 !! test
 Parsoid: Serialize a genuine category link without colon escape
-!! options
-parsoid
 !! wikitext
 [[Category:Foo]]
 [[Category:Foo|Bar]]
-!! html
+!! html/php+tidy
+!! html/parsoid
 <link rel="mw:PageProp/Category" href="./Category:Foo">
 <link rel="mw:PageProp/Category" href="./Category:Foo#Bar">
 !! end
@@ -17282,12 +17784,12 @@ section 6
 <h2 id="Underscore-Entity_between_Text">Underscore-Entity<span typeof="mw:Entity" data-parsoid='{"src":"&amp;#95;","srcContent":"_"}'>_</span>between<span typeof="mw:Entity" data-parsoid='{"src":"&amp;#95;","srcContent":"_"}'>_</span>Text</h2>
 <p>section 6</p>
 
-<p><a rel="mw:WikiLink" href="./Main_Page#Space_between_Text" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#Space_between_Text"},"sa":{"href":"#Space between Text"}}'>#Space between Text</a>
-<a rel="mw:WikiLink" href="./Main_Page#Space-Entity_between_Text" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#Space-Entity_between_Text"},"sa":{"href":"#Space-Entity&amp;#32;between&amp;#32;Text"}}'>#Space-Entity between Text</a>
-<a rel="mw:WikiLink" href="./Main_Page#Plus+between+Text" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#Plus+between+Text"},"sa":{"href":"#Plus+between+Text"}}'>#Plus+between+Text</a>
-<a rel="mw:WikiLink" href="./Main_Page#Plus-Entity+between+Text" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#Plus-Entity+between+Text"},"sa":{"href":"#Plus-Entity&amp;#43;between&amp;#43;Text"}}'>#Plus-Entity+between+Text</a>
-<a rel="mw:WikiLink" href="./Main_Page#Underscore_between_Text" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#Underscore_between_Text"},"sa":{"href":"#Underscore_between_Text"}}'>#Underscore_between_Text</a>
-<a rel="mw:WikiLink" href="./Main_Page#Underscore-Entity_between_Text" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#Underscore-Entity_between_Text"},"sa":{"href":"#Underscore-Entity&amp;#95;between&amp;#95;Text"}}'>#Underscore-Entity_between_Text</a></p>
+<p><a rel="mw:WikiLink" href="./Parser_test#Space_between_Text" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#Space_between_Text"},"sa":{"href":"#Space between Text"}}'>#Space between Text</a>
+<a rel="mw:WikiLink" href="./Parser_test#Space-Entity_between_Text" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#Space-Entity_between_Text"},"sa":{"href":"#Space-Entity&amp;#32;between&amp;#32;Text"}}'>#Space-Entity between Text</a>
+<a rel="mw:WikiLink" href="./Parser_test#Plus+between+Text" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#Plus+between+Text"},"sa":{"href":"#Plus+between+Text"}}'>#Plus+between+Text</a>
+<a rel="mw:WikiLink" href="./Parser_test#Plus-Entity+between+Text" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#Plus-Entity+between+Text"},"sa":{"href":"#Plus-Entity&amp;#43;between&amp;#43;Text"}}'>#Plus-Entity+between+Text</a>
+<a rel="mw:WikiLink" href="./Parser_test#Underscore_between_Text" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#Underscore_between_Text"},"sa":{"href":"#Underscore_between_Text"}}'>#Underscore_between_Text</a>
+<a rel="mw:WikiLink" href="./Parser_test#Underscore-Entity_between_Text" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#Underscore-Entity_between_Text"},"sa":{"href":"#Underscore-Entity&amp;#95;between&amp;#95;Text"}}'>#Underscore-Entity_between_Text</a></p>
 !! end
 
 # Parsoid html2wt disabled because it adds padding spaces around =
@@ -18867,6 +19369,8 @@ Table not started</td></tr></table>
 
 !! test
 Sanitizer: Escaping of spaces, multibyte characters, colons & other stuff in id=""
+!! options
+title=[[Main Page]]
 !! config
 wgFragmentMode=[ 'html5', 'legacy' ]
 !! wikitext
@@ -19358,19 +19862,17 @@ parsoid=wt2html,html2html
 !! wikitext
 ==a==
 {| STYLE=__TOC__
-!! html
+!! html/php
 <h2><span class="mw-headline" id="a">a</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Parser_test&amp;action=edit&amp;section=1" title="Edit section: a">edit</a><span class="mw-editsection-bracket">]</span></span></h2>
 <table style="&#95;_TOC&#95;_">
 <tr><td></td></tr>
 </table>
 
-!! html+tidy
+!! html/php+tidy
 <h2><span class="mw-headline" id="a">a</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Parser_test&amp;action=edit&amp;section=1" title="Edit section: a">edit</a><span class="mw-editsection-bracket">]</span></span></h2>
-<table style="__TOC__">
-<tr>
-<td></td>
-</tr>
-</table>
+<table style="&#95;_TOC&#95;_">
+<tbody><tr><td></td></tr>
+</tbody></table>
 !! html/parsoid
 <h2 id="a">a</h2>
 <table style="__TOC__"></table>
@@ -25212,13 +25714,17 @@ Lead
 ###
 !!test
 1. SOL-sensitive wikitext tokens as template-args
-!!options
+!! options
 parsoid=wt2html,wt2wt
 !! wikitext
 {{echo|*a}}
 {{echo|#a}}
 {{echo|:a}}
-!! html
+!! html/php+tidy
+<ul><li>a</li></ul>
+<ol><li>a</li></ol>
+<dl><dd>a</dd></dl>
+!! html/parsoid
 <span about="#mwt1" typeof="mw:Transclusion">
 </span><ul about="#mwt1"><li>a</li>
 </ul>
@@ -26298,6 +26804,33 @@ parsoid=html2wt
 <td>+1
 </td>
 <td>-2
+</td></tr></table>
+
+!! end
+
+!! test
+Tables: 4e. Escape }
+!! options
+parsoid=html2wt
+!! html/parsoid
+<table>
+<tr><td>}</td></tr>
+<tr><td>x</td><td data-parsoid='{"stx":"row"}'>}</td></tr></table>
+</table>
+!! wikitext
+{|
+|<nowiki>}</nowiki>
+|-
+|x||}
+|}
+!! html/php
+<table>
+<tr>
+<td>}
+</td></tr>
+<tr>
+<td>x</td>
+<td>}
 </td></tr></table>
 
 !! end
@@ -27551,17 +28084,20 @@ Indent and comment before table row
 </tbody></table>
 !! end
 
-# Parsoid-specific since PHP parser doesn't handle this mixed tbl-wikitext
+# PHP parser omits empty TR
 !!test
 Empty TR followed by a template-generated TR
-!!options
-parsoid
 !! wikitext
 {|
 |-
 {{echo|<tr><td>foo</td></tr>}}
 |}
-!! html
+!! html/php+tidy
+<table>
+
+<tbody><tr><td>foo</td></tr>
+</tbody></table>
+!! html/parsoid
 <table>
 <tbody>
 <tr class='mw-empty-elt'></tr>
@@ -27570,12 +28106,10 @@ parsoid
 </tbody></table>
 !!end
 
-## PHP and parsoid output differ for this, and since this is primarily
-## for testing Parsoid's serializer, marking this Parsoid only
+## PHP and parsoid output differ for this; as usual PHP omits empty
+## elements, and since it strips the comments the TR is empty.
 !!test
 Empty TR followed by mixed-ws-comment line should RT correctly
-!!options
-parsoid
 !! wikitext
 {|
 |-
@@ -27583,7 +28117,12 @@ parsoid
 |-
 <!--c--> <!--d-->
 |}
-!! html
+!! html/php+tidy
+<table>
+
+
+</table>
+!! html/parsoid
 <table>
 <tbody>
 <tr class='mw-empty-elt'></tr>
@@ -28251,11 +28790,11 @@ parsoid={
 
 !! test
 Image: empty alt attribute (T50924)
-!! options
-parsoid
 !! wikitext
 [[File:Foobar.jpg|thumb|alt=|bar]]
-!! html
+!! html/php+tidy
+<div class="thumb tright"><div class="thumbinner" style="width:182px;"><a href="/wiki/File:Foobar.jpg" class="image"><img alt="" src="http://example.com/images/thumb/3/3a/Foobar.jpg/180px-Foobar.jpg" width="180" height="20" class="thumbimage" srcset="http://example.com/images/thumb/3/3a/Foobar.jpg/270px-Foobar.jpg 1.5x, http://example.com/images/thumb/3/3a/Foobar.jpg/360px-Foobar.jpg 2x" /></a>  <div class="thumbcaption"><div class="magnify"><a href="/wiki/File:Foobar.jpg" class="internal" title="Enlarge"></a></div>bar</div></div></div>
+!! html/parsoid
 <figure class="mw-default-size" typeof="mw:Image/Thumb" data-parsoid='{"optList":[{"ck":"thumbnail","ak":"thumb"},{"ck":"alt","ak":"alt="},{"ck":"caption","ak":"bar"}]}'><a href="./File:Foobar.jpg" data-parsoid='{"a":{"href":"./File:Foobar.jpg"}}'><img alt="" resource="./File:Foobar.jpg" src="//example.com/images/thumb/3/3a/Foobar.jpg/220px-Foobar.jpg" data-file-width="1941" data-file-height="220" data-file-type="bitmap" height="25" width="220" data-parsoid='{"a":{"alt":"","resource":"./File:Foobar.jpg","height":"25","width":"220"},"sa":{"alt":"alt=","resource":"File:Foobar.jpg"}}'/></a><figcaption>bar</figcaption></figure>
 !! end
 
@@ -29522,7 +30061,7 @@ parsoid={
 Serialize wikitext list items as HTML list items when embedded in a HTML list
 !! options
 parsoid=html2wt
-!! html
+!! html/parsoid
 <ul data-parsoid='{"stx": "html"}'>
 <li data-parsoid='{}'>a</li>
 <li>b</li>
@@ -29532,17 +30071,22 @@ parsoid=html2wt
 <li>a</li>
 <li>b</li>
 </ul>
+!! html/php+tidy
+<ul>
+<li>a</li>
+<li>b</li>
+</ul>
 !! end
 
-# SSS FIXME: Is this actually a good thing given the
-# odd nested list output that is generated by MW?
+# Nested list should be inside <li>, that is
 # <ul><li>foo<ul>..</ul></li></ul> instead of
 # <ul><li>foo</li><ul>..</ul></ul>
+# See https://stackoverflow.com/questions/5899337/proper-way-to-make-html-nested-list
 !! test
 Wikitext lists can be nested inside HTML lists
 !! options
 parsoid=html2wt
-!! html
+!! html/parsoid
 <ul data-parsoid='{"stx": "html"}'>
 <li data-parsoid='{"stx": "html"}'>a
 <ul><li>b</li></ul>
@@ -29564,6 +30108,17 @@ parsoid=html2wt
 <ul>
 <li>x
 * y
+</li>
+</ul>
+!! html/php+tidy
+<ul>
+<li>a
+<ul><li>b</li></ul>
+</li>
+</ul>
+<ul>
+<li>x
+<ul><li>y</li></ul>
 </li>
 </ul>
 !! end
@@ -30009,7 +30564,7 @@ parsoid={
   "modes": ["html2wt"],
   "scrubWikitext": true
 }
-!! html
+!! html/parsoid
 <h2><i></i></h2>
 <p><a href='Foo' rel='mw:WikiLink'>foo<i></i>
  </a><b><i></i></b>x</p>
@@ -30167,11 +30722,12 @@ parsoid={
   "modes": ["html2wt"],
   "scrubWikitext": false
 }
-!! html
+!! html/parsoid
 <table>
 <tr><td>a</td></tr>
 <tr><td>-</td></tr>
 <tr><td>+</td></tr>
+<tr><td>}</td></tr>
 </table>
 !! wikitext
 {|
@@ -30180,6 +30736,8 @@ parsoid={
 |<nowiki>-</nowiki>
 |-
 |<nowiki>+</nowiki>
+|-
+|<nowiki>}</nowiki>
 |}
 !! end
 
@@ -30190,11 +30748,12 @@ parsoid={
   "modes": ["html2wt"],
   "scrubWikitext": true
 }
-!! html
+!! html/parsoid
 <table>
 <tr><td>a</td></tr>
 <tr><td>-</td></tr>
 <tr><td>+</td></tr>
+<tr><td>}</td></tr>
 </table>
 !! wikitext
 {|
@@ -30203,6 +30762,8 @@ parsoid={
 | -
 |-
 | +
+|-
+| }
 |}
 !! end
 
@@ -30347,7 +30908,7 @@ parsoid={
   "modes": ["html2wt"],
   "scrubWikitext": true
 }
-!! html
+!! html/parsoid
 <font>foo</font>
 <font><font>bar</font></font>
 <font class="x">boo</font>
@@ -30364,7 +30925,7 @@ parsoid={
   "modes": ["html2wt"],
   "scrubWikitext": false
 }
-!! html
+!! html/parsoid
 <font>foo</font>
 !! wikitext
 <font>foo</font>
@@ -30829,7 +31390,7 @@ wgFragmentMode=[ 'html5', 'legacy' ]
 </p>
 !! html/parsoid
 <h2 id="A&amp;B&amp;C&amp;amp;D&amp;amp;amp;E"><span id="A.26B.26C.26amp.3BD.26amp.3Bamp.3BE" typeof="mw:FallbackId" data-parsoid="{}"></span>A&amp;B<span typeof="mw:Entity" data-parsoid='{"src":"&amp;amp;","srcContent":"&amp;"}'>&amp;</span>C<span typeof="mw:Entity" data-parsoid='{"src":"&amp;amp;","srcContent":"&amp;"}'>&amp;</span>amp;D<span typeof="mw:Entity" data-parsoid='{"src":"&amp;amp;","srcContent":"&amp;"}'>&amp;</span>amp;amp;E</h2>
-<p><a rel="mw:WikiLink" href="./Main_Page#A&amp;B&amp;C&amp;amp;D&amp;amp;amp;E" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#A&amp;B&amp;C&amp;amp;D&amp;amp;amp;E"},"sa":{"href":"#A&amp;B&amp;amp;C&amp;amp;amp;D&amp;amp;amp;amp;E"}}'>#A&amp;B&amp;C&amp;amp;D&amp;amp;amp;E</a></p>
+<p><a rel="mw:WikiLink" href="./Parser_test#A&amp;B&amp;C&amp;amp;D&amp;amp;amp;E" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#A&amp;B&amp;C&amp;amp;D&amp;amp;amp;E"},"sa":{"href":"#A&amp;B&amp;amp;C&amp;amp;amp;D&amp;amp;amp;amp;E"}}'>#A&amp;B&amp;C&amp;amp;D&amp;amp;amp;E</a></p>
 !! end
 
 !! test
@@ -30942,12 +31503,12 @@ wgFragmentMode=[ 'html5', 'legacy' ]
 <h2 id="тест"><span id=".D1.82.D0.B5.D1.81.D1.82" typeof="mw:FallbackId"></span>тест</h2>
 
 <h2 id="Hey_&lt;_#_&quot;_>_%_:_'"><span id="Hey_.3C_.23_.22_.3E_.25_:_.27" typeof="mw:FallbackId"></span>Hey &lt; # " > %<span typeof="mw:DisplaySpace mw:Placeholder" data-parsoid='{"src":" ","isDisplayHack":true}'> </span>: '</h2>
-<p><a rel="mw:WikiLink" href="./Main_Page#Foo_bar">#Foo bar</a> <a rel="mw:WikiLink" href="./Main_Page#foo_Bar">#foo Bar</a> <a rel="mw:WikiLink" href="./Main_Page#Тест">#Тест</a> <a rel="mw:WikiLink" href="./Main_Page#тест">#тест</a> <a rel="mw:WikiLink" href="./Main_Page#Hey_&lt;_#_&quot;_>_%_:_'" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#Hey_&lt;_#_\"_>_%_:_&#39;"},"sa":{"href":"#Hey &lt; # \" > % : &#39;"}}'>#Hey &lt; # " > % : '</a></p>
+<p><a rel="mw:WikiLink" href="./Parser_test#Foo_bar">#Foo bar</a> <a rel="mw:WikiLink" href="./Parser_test#foo_Bar">#foo Bar</a> <a rel="mw:WikiLink" href="./Parser_test#Тест">#Тест</a> <a rel="mw:WikiLink" href="./Parser_test#тест">#тест</a> <a rel="mw:WikiLink" href="./Parser_test#Hey_&lt;_#_&quot;_>_%_:_'" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#Hey_&lt;_#_\"_>_%_:_&#39;"},"sa":{"href":"#Hey &lt; # \" > % : &#39;"}}'>#Hey &lt; # " > % : '</a></p>
 
 <p><span about="#mwt1" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"anchorencode:💩","function":"anchorencode"},"params":{},"i":0}}]}'>💩</span> <span id="💩" about="#mwt3" typeof="mw:ExpandedAttrs" data-mw='{"attribs":[[{"txt":"id"},{"html":"&lt;span about=\"#mwt2\" typeof=\"mw:Transclusion\" data-parsoid=&#39;{\"pi\":[[]],\"dsr\":[178,197,null,null]}&#39; data-mw=&#39;{\"parts\":[{\"template\":{\"target\":{\"wt\":\"anchorencode:💩\",\"function\":\"anchorencode\"},\"params\":{},\"i\":0}}]}&#39;>💩&lt;/span>"}]]}'></span></p>
 
 <!-- These two links should produce identical HTML -->
-<p><a rel="mw:WikiLink" href="./Main_Page#啤酒">#啤酒</a> <a rel="mw:WikiLink" href="./Main_Page#啤酒" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#啤酒"},"sa":{"href":"#%E5%95%A4%E9%85%92"}}'>#啤酒</a></p>
+<p><a rel="mw:WikiLink" href="./Parser_test#啤酒">#啤酒</a> <a rel="mw:WikiLink" href="./Parser_test#啤酒" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#啤酒"},"sa":{"href":"#%E5%95%A4%E9%85%92"}}'>#啤酒</a></p>
 !! end
 
 # Parsoid doesn't support this mode
@@ -31060,7 +31621,7 @@ wgFragmentMode=[ 'html5', 'legacy' ]
 </p>
 !! html/parsoid
 <h2 id="Foo_bar"> Foo<span typeof="mw:Entity" data-parsoid='{"src":"&amp;nbsp;","srcContent":" "}'> </span>bar </h2>
-<p><a rel="mw:WikiLink" href="./Main_Page#Foo_bar" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#Foo_bar"},"sa":{"href":"#Foo&amp;nbsp;bar"}}'>#Foo bar</a></p>
+<p><a rel="mw:WikiLink" href="./Parser_test#Foo_bar" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#Foo_bar"},"sa":{"href":"#Foo&amp;nbsp;bar"}}'>#Foo bar</a></p>
 !! end
 
 !! test
@@ -31117,7 +31678,7 @@ wgFragmentMode=[ 'html5' ]
 <p><span id="&#91;foo&#93;"></span><a href="#[foo]">#&#91;foo&#93;</a>
 </p>
 !! html/parsoid
-<p><span id="[foo]" about="#mwt3" typeof="mw:ExpandedAttrs" data-parsoid='{"stx":"html","a":{"id":"[foo]"},"sa":{"id":"{{anchorencode:[foo]}}"}}' data-mw='{"attribs":[[{"txt":"id"},{"html":"&lt;span typeof=\"mw:Transclusion mw:Entity\" about=\"#mwt1\" data-parsoid=&apos;{\"srcContent\":\"[\",\"dsr\":[10,32,null,null],\"pi\":[[]]}&apos; data-mw=&apos;{\"parts\":[{\"template\":{\"target\":{\"wt\":\"anchorencode:[foo]\",\"function\":\"anchorencode\"},\"params\":{},\"i\":0}}]}&apos;>[&lt;/span>&lt;span about=\"#mwt1\" data-parsoid=\"{}\">foo&lt;/span>&lt;span typeof=\"mw:Entity\" about=\"#mwt1\" data-parsoid=&apos;{\"src\":\"&amp;amp;#x5D;\",\"srcContent\":\"]\"}&apos;>]&lt;/span>"}]]}'></span><a typeof="mw:ExpandedAttrs" about="#mwt4" rel="mw:WikiLink" href="./Main_Page#[foo]" data-parsoid='{"stx":"simple","a":{"href":"./Main_Page#[foo]"},"sa":{"href":"#{{anchorencode:[foo]}}"}}' data-mw='{"attribs":[[{"txt":"href"},{"html":"#&lt;span typeof=\"mw:Transclusion mw:Entity\" about=\"#mwt2\" data-parsoid=&apos;{\"srcContent\":\"[\",\"dsr\":[44,66,null,null],\"pi\":[[]]}&apos; data-mw=&apos;{\"parts\":[{\"template\":{\"target\":{\"wt\":\"anchorencode:[foo]\",\"function\":\"anchorencode\"},\"params\":{},\"i\":0}}]}&apos;>[&lt;/span>&lt;span about=\"#mwt2\" data-parsoid=\"{}\">foo&lt;/span>&lt;span typeof=\"mw:Entity\" about=\"#mwt2\" data-parsoid=&apos;{\"src\":\"&amp;amp;#x5D;\",\"srcContent\":\"]\"}&apos;>]&lt;/span>"}]]}'>#[foo]</a></p>
+<p><span id="[foo]" about="#mwt3" typeof="mw:ExpandedAttrs" data-parsoid='{"stx":"html","a":{"id":"[foo]"},"sa":{"id":"{{anchorencode:[foo]}}"}}' data-mw='{"attribs":[[{"txt":"id"},{"html":"&lt;span typeof=\"mw:Transclusion mw:Entity\" about=\"#mwt1\" data-parsoid=&apos;{\"srcContent\":\"[\",\"dsr\":[10,32,null,null],\"pi\":[[]]}&apos; data-mw=&apos;{\"parts\":[{\"template\":{\"target\":{\"wt\":\"anchorencode:[foo]\",\"function\":\"anchorencode\"},\"params\":{},\"i\":0}}]}&apos;>[&lt;/span>&lt;span about=\"#mwt1\" data-parsoid=\"{}\">foo&lt;/span>&lt;span typeof=\"mw:Entity\" about=\"#mwt1\" data-parsoid=&apos;{\"src\":\"&amp;amp;#x5D;\",\"srcContent\":\"]\"}&apos;>]&lt;/span>"}]]}'></span><a typeof="mw:ExpandedAttrs" about="#mwt4" rel="mw:WikiLink" href="./Parser_test#[foo]" data-parsoid='{"stx":"simple","a":{"href":"./Parser_test#[foo]"},"sa":{"href":"#{{anchorencode:[foo]}}"}}' data-mw='{"attribs":[[{"txt":"href"},{"html":"#&lt;span typeof=\"mw:Transclusion mw:Entity\" about=\"#mwt2\" data-parsoid=&apos;{\"srcContent\":\"[\",\"dsr\":[44,66,null,null],\"pi\":[[]]}&apos; data-mw=&apos;{\"parts\":[{\"template\":{\"target\":{\"wt\":\"anchorencode:[foo]\",\"function\":\"anchorencode\"},\"params\":{},\"i\":0}}]}&apos;>[&lt;/span>&lt;span about=\"#mwt2\" data-parsoid=\"{}\">foo&lt;/span>&lt;span typeof=\"mw:Entity\" about=\"#mwt2\" data-parsoid=&apos;{\"src\":\"&amp;amp;#x5D;\",\"srcContent\":\"]\"}&apos;>]&lt;/span>"}]]}'>#[foo]</a></p>
 !! end
 
 ## ------------------------------
