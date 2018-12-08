@@ -3,8 +3,10 @@
 namespace Parsoid\Lib\Utils;
 
 require_once __DIR__."/../config/WikitextConstants.php";
+require_once __DIR__."/TokenUtils.php";
 
 use Parsoid\Lib\Config\WikitextConstants;
+use Parsoid\Lib\Utils\TokenUtils;
 
 class DU {
 	const TPL_META_TYPE_REGEXP = '/(?:^|\s)(mw:(?:Transclusion|Param)(?:\/End)?)(?=$|\s)/';
@@ -57,6 +59,10 @@ class DU {
 		return $node && $node->nodeType === 3;
 	}
 
+	public static function isComment( $node ) {
+		return $node && $node->nodeType === 8;
+	}
+
 	public static function isBody( $node ) {
 		return $node && $node->nodeName === 'body';
 	}
@@ -88,6 +94,10 @@ class DU {
 	 */
 	public static function isTplMetaType($nType) {
 		return preg_match(self::TPL_META_TYPE_REGEXP, $nType);
+	}
+
+	public static function isBlockNode($node) {
+		return $node && TokenUtils::isBlockTag($node->nodeName);
 	}
 
 	public static function getDataParsoid( $node ) {
@@ -394,5 +404,32 @@ class DU {
 
 	public static function dumpDOM($node, $str) {
 		/* nothing */
+	}
+
+	public static function isFallbackIdSpan($node) {
+		return $node->nodeName === 'span' && $node->getAttribute('typeof') === 'mw:FallbackId';
+	}
+
+	public static function isSolTransparentLink($node) {
+		return self::isElt($node) && $node->nodeName === 'link' &&
+			preg_match(TokenUtils::solTransparentLinkRegexp, $node->getAttribute('rel'));
+	}
+
+	public static function isRenderingTransparentNode($node) {
+		// FIXME: Can we change this entire thing to
+		// self::isComment($node) ||
+		// self::getDataParsoid($node).stx !== 'html' &&
+		//   ($node->nodeName === 'META' || $node->nodeName === 'LINK')
+		//
+		$typeOf = self::isElt($node) && $node->getAttribute('typeof');
+		return self::isComment($node) ||
+			self::isSolTransparentLink($node) ||
+			// Catch-all for everything else.
+			($node->nodeName === 'meta' &&
+				// (Start|End)Tag metas clone data-parsoid from the tokens
+				// they're shadowing, which trips up on the stx check.
+				// TODO: Maybe that data should be nested in a property?
+				(preg_match('/(mw:StartTag)|(mw:EndTag)/', $typeOf) || !isset(self::getDataParsoid($node)["stx"]) || self::getDataParsoid($node)["stx"] !== 'html')) ||
+			self::isFallbackIdSpan($node);
 	}
 }

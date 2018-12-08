@@ -15,6 +15,7 @@ require_once __DIR__."/../../../utils/DU.php";
 require_once "computeDSR.php";
 require_once "wrapSections.php";
 require_once "cleanupFormattingTagFixup.php";
+require_once "pwrap.php";
 
 use Parsoid\Lib\Config\Env;
 use Parsoid\Lib\Config\WikitextConstants;
@@ -72,6 +73,9 @@ function test( $argc, $argv, $dumpDOM = false ) {
 			break;
 		case 'wrapSections' :
 			wrapSections( $dom->getElementsByTagName('body')->item(0), $env, null );
+			break;
+		case 'pwrap' :
+			pwrapDOM( $dom->getElementsByTagName('body')->item(0), $env, null );
 			break;
 	}
 	$time += microtime( true );
