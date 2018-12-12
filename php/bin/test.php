@@ -13,7 +13,9 @@ require_once (__DIR__.'/../lib/config/Env.php');
 require_once (__DIR__.'/../lib/config/WikitextConstants.php');
 require_once (__DIR__.'/../lib/utils/DU.php');
 require_once (__DIR__.'/../lib/wt2html/pp/processors/computeDSR.php');
+require_once (__DIR__.'/../lib/wt2html/pp/processors/wrapSections.php');
 require_once (__DIR__.'/../lib/wt2html/pp/processors/cleanupFormattingTagFixup.php');
+require_once (__DIR__.'/../lib/wt2html/pp/processors/pwrap.php');
 
 use Parsoid\Lib\Config\Env;
 use Parsoid\Lib\Config\WikitextConstants;
@@ -68,6 +70,12 @@ function test( $argc, $argv, $dumpDOM = false ) {
 			break;
 		case 'cleanupFormattingTagFixup' :
 			cleanupFormattingTagFixup( $dom->getElementsByTagName('body')->item(0), $env );
+			break;
+		case 'sections' :
+			wrapSections( $dom->getElementsByTagName('body')->item(0), $env, null );
+			break;
+		case 'pwrap' :
+			pwrapDOM( $dom->getElementsByTagName('body')->item(0), $env, null );
 			break;
 	}
 	$time += microtime( true );
