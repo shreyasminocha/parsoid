@@ -118,6 +118,7 @@ class console {
 $console = new console;
 
 function console_log($arguments) {
+	global $console;
 	$console->log($arguments);
 }
 
@@ -601,7 +602,7 @@ function selectTestType($commandLine, $manager, $handler) {
 // preceded with -- are stored in the element _array at their argv index as text.
 // There is no security checking for the text being processed by the dangerous eval() function.
 function processArguments($argc, $argv) {
-	$opts = new stdClass();
+	$opts = (object)[];
     $last = false;
     for ($index=1; $index < $argc; $index++) {
         $text = $argv[$index];
