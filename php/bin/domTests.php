@@ -124,11 +124,8 @@ class MockDOMPostProcessor
 		switch ($opts->transformer) {
 			case 'dsr':
 				computeDSR($dom->getElementsByTagName('body')->item(0),
-
-	// need to be able to specify dsr sourceOffsets, but it maybe that genTest now adds data-parsoid info
-	// argv[3] does not exist. ERROR
-
-				$env, ['sourceOffsets' => [0, $argv[3]], 'attrExpansion' => false]);
+				// genTest must specify dsr sourceOffsets as data-parsoid info
+				$env, ['sourceOffsets' => [DU::getDataParsoid($dom->getElementsByTagName('body')->item(0))], 'attrExpansion' => false]);
 				break;
 			case 'cleanupFormattingTagFixup':
 				cleanupFormattingTagFixup($dom->getElementsByTagName('body')->item(0), $env);
@@ -143,9 +140,7 @@ class MockDOMPostProcessor
 
 		$this->transformTime += PHPUtil::getHRTimeDifferential($startTime);
 
-		print "time - $time\n";
-
-		if (true) { //$dumpDOM
+		if (isset($dumpDOM)) {
 			print $serializer->getResult();
 		}
 
