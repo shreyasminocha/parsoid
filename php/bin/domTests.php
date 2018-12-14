@@ -123,9 +123,15 @@ class MockDOMPostProcessor
 
 		switch ($opts->transformer) {
 			case 'dsr':
-				computeDSR($dom->getElementsByTagName('body')->item(0),
+				$body = $dom->getElementsByTagName('body')->item(0);
 				// genTest must specify dsr sourceOffsets as data-parsoid info
-				$env, ['sourceOffsets' => [DU::getDataParsoid($dom->getElementsByTagName('body')->item(0))], 'attrExpansion' => false]);
+				$dp = DU::getDataParsoid($body);
+				if ($dp['dsr']) {
+					$options = ['sourceOffsets' => $dp['dsr'], 'attrExpansion' => false];
+				} else {
+					$options = ['attrExpansion' => false];
+				}
+				computeDSR($body, $env, $options);
 				break;
 			case 'cleanupFormattingTagFixup':
 				cleanupFormattingTagFixup($dom->getElementsByTagName('body')->item(0), $env);
