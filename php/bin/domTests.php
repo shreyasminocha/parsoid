@@ -120,20 +120,22 @@ class MockDOMPostProcessor
 
 		$dom = buildDOM($domBuilder, $testFilePre);
 
-		$domPre = $serializer->getResult();
+		if ($opts->firstRun) {
+			$domPre = $serializer->getResult();
 
-		// hack to add html and head tags and adjust closing /body and add /html tag and newline
-		$testFilePre = "<html><head></head>" . substr($testFilePre, 0, -8) . "\n</body></html>";
+			// hack to add html and head tags and adjust closing /body and add /html tag and newline
+			$testFilePre = "<html><head></head>" . substr($testFilePre, 0, -8) . "\n</body></html>";
 
-		if ($testFilePre === $domPre) {
-			print "DOM pre output matches genTest Pre output\n";
-		} else {
-			print "DOM pre output DOES NOT match genTest Pre output\n";
-		}
+			if ($testFilePre === $domPre) {
+				$console->log("DOM pre output matches genTest Pre output\n");
+			} else {
+				$console->log("DOM pre output DOES NOT match genTest Pre output\n");
+			}
 
-		if ($opts->debug_dump) {
-			file_put_contents( 'temporaryPre.txt', $domPre);
-			print ("temporaryPre.txt saved!\n");
+			if ($opts->debug_dump) {
+				file_put_contents('temporaryPre.txt', $domPre);
+				$console->log("temporaryPre.txt saved!\n");
+			}
 		}
 
 		$startTime = PHPUtil::getStartHRTime();
@@ -163,24 +165,29 @@ class MockDOMPostProcessor
 
 		$this->transformTime += PHPUtil::getHRTimeDifferential($startTime);
 
-		$domPost = $serializer->getResult();
+		if ($opts->firstRun) {
+			$opts->firstRun = false;
 
-		// hack to add html and head tags and adjust closing /body and add /html tag and newline
-		$testFilePost = "<html><head></head>" . substr($testFilePost, 0, -8) . "\n</body></html>";
+			$domPost = $serializer->getResult();
 
-		if ($testFilePost === $domPost) {
-			print "DOM post transform output matches genTest Post output\n";
-		} else {
-			print "DOM post transform output DOES NOT match genTest Post output\n";
-		}
+			// hack to add html and head tags and adjust closing /body and add /html tag and newline
+			$testFilePost = "<html><head></head>" . substr($testFilePost, 0, -8) . "\n</body></html>";
 
-		if ($opts->debug_dump) {
-			file_put_contents( 'temporaryPost.txt', $domPost);
-			print ("temporaryPost.txt saved!\n");
+			if ($testFilePost === $domPost) {
+				$console->log("DOM post transform output matches genTest Post output\n");
+			} else {
+				$console->log("DOM post transform output DOES NOT match genTest Post output\n");
+				$numFailures++;
+			}
+
+			if ($opts->debug_dump) {
+				file_put_contents('temporaryPost.txt', $domPost);
+				$console->log("temporaryPost.txt saved!\n");
+			}
 		}
 
 		if (isset($dump_dom)) {
-			print $domPost;
+			$console->log($domPost);
 		}
 
 		return $numFailures;
@@ -192,10 +199,11 @@ class MockDOMPostProcessor
 		$iterator = 1;
 
 		if (isset($opts->timingMode)) {
+			$opts->firstRun = true;
 			if (isset($opts->iterationCount)) {
 				$iterator = $opts->iterationCount;
 			} else {
-				$iterator = 10000;  // defaults to 10000 iterations
+				$iterator = 50;  // defaults to 50 interations
 			}
 		}
 
@@ -254,7 +262,9 @@ function runTests($argc, $argv) {
 	$opts = processArguments($argc, $argv);
 
 	if (isset($opts->help)) {
-		$console->log("must specify [--timingMode] [--iterationCount=XXX] --transformer NAME --inputFile path/wikiName");
+		$console->log("must specify [--timingMode] [--iterationCount=XXX] --transformer NAME --inputFile path/wikiName\n");
+		$console->log("Default iteration count is 50 if not specified\n");
+		$console->log("use --debug_dump to create pre and post dom serialized output to temporaryPre.txt and ...Post.txt\n");
 		return;
 	}
 
