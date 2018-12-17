@@ -103,9 +103,10 @@ class MockDOMPostProcessor
 			$testFilePre = mb_convert_encoding($testFilePre, 'UTF-8', mb_detect_encoding($testFilePre, 'UTF-8, ISO-8859-1', true));
 			$testFilePost = mb_convert_encoding($testFilePost, 'UTF-8', mb_detect_encoding($testFilePost, 'UTF-8, ISO-8859-1', true));
 
-			// Hack to fix trailing newline being moved to bode final </body> by domino, remove when fixed in domino
-			if ($testFilePre[strlen($testFilePre) - 1] === '\n') { $testFilePre = substr($testFilePre, 0, -1); }
-			if ($testFilePost[strlen($testFilePost)- 1] === '\n') { $testFilePost = substr($testFilePost, 0, -1); }
+			// Hack to fix trailing newline being moved around </body> by domino, remove when fixed in domino
+			// leaving this code and comment here to provide context
+			// if ($testFilePre[strlen($testFilePre) - 1] === '\n') { $testFilePre = substr($testFilePre, 0, -1); }
+			// if ($testFilePost[strlen($testFilePost)- 1] === '\n') { $testFilePost = substr($testFilePost, 0, -1); }
 			$cachedFilePre = $testFilePre;
 			$cachedFilePost = $testFilePost;
 		} else {
@@ -118,6 +119,22 @@ class MockDOMPostProcessor
 		$env = new Env();
 
 		$dom = buildDOM($domBuilder, $testFilePre);
+
+		$domPre = $serializer->getResult();
+
+		// hack to add html and head tags and adjust closing /body and add /html tag and newline
+		$testFilePre = "<html><head></head>" . substr($testFilePre, 0, -8) . "\n</body></html>";
+
+		if ($testFilePre === $domPre) {
+			print "DOM pre output matches genTest Pre output\n";
+		} else {
+			print "DOM pre output DOES NOT match genTest Pre output\n";
+		}
+
+		if ($opts->debug_dump) {
+			file_put_contents( 'temporaryPre.txt', $domPre);
+			print ("temporaryPre.txt saved!\n");
+		}
 
 		$startTime = PHPUtil::getStartHRTime();
 
@@ -146,8 +163,24 @@ class MockDOMPostProcessor
 
 		$this->transformTime += PHPUtil::getHRTimeDifferential($startTime);
 
-		if (isset($dumpDOM)) {
-			print $serializer->getResult();
+		$domPost = $serializer->getResult();
+
+		// hack to add html and head tags and adjust closing /body and add /html tag and newline
+		$testFilePost = "<html><head></head>" . substr($testFilePost, 0, -8) . "\n</body></html>";
+
+		if ($testFilePost === $domPost) {
+			print "DOM post transform output matches genTest Post output\n";
+		} else {
+			print "DOM post transform output DOES NOT match genTest Post output\n";
+		}
+
+		if ($opts->debug_dump) {
+			file_put_contents( 'temporaryPost.txt', $domPost);
+			print ("temporaryPost.txt saved!\n");
+		}
+
+		if (isset($dump_dom)) {
+			print $domPost;
 		}
 
 		return $numFailures;
