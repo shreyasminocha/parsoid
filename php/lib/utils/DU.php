@@ -172,18 +172,6 @@ class DU {
 		return $n && isset( WikitextConstants::$WTQuoteTags[$n->nodeName] );
 	}
 
-	public static function tsrSpansTagDOM($n, $parsoidData) {
-		// - tags known to have tag-specific tsr
-		// - html tags with 'stx' set
-		// - span tags with 'mw:Nowiki' type
-		$name = $n->nodeName;
-		return !(
-			isset(self::$WtTagsWithLimitedTSR[$name]) ||
-			self::hasLiteralHTMLMarker($parsoidData) ||
-			self::isNodeOfType($n, 'span', 'mw:Nowiki')
-		);
-	}
-
 	public static function deleteNode( $node ) {
 		$node->parentNode->removeChild( $node );
 	}
@@ -308,14 +296,7 @@ class DU {
 	}
 
 	public static function isDOMFragmentWrapper($node) {
-		if (!self::isElt($node)) {
-			return false;
-		}
-
-		$about = $node->getAttribute("about");
-		return $about && (
-			self::isDOMFragmentType($node->getAttribute("typeof"))
-		);
+		return self::isElt($node) && self::isDOMFragmentType($node->getAttribute("typeof"));
 	}
 
 	/**

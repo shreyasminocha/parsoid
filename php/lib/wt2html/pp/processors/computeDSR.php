@@ -35,6 +35,16 @@ function acceptableInconsistency($opts, $node, $cs, $s) {
 	}
 }
 
+function tsrSpansTagDOM($n, $parsoidData) {
+	// - tags known to have tag-specific tsr
+	// - html tags with 'stx' set
+	$name = $n->nodeName;
+	return !(
+		isset(DU::$WtTagsWithLimitedTSR[$name]) ||
+		DU::hasLiteralHTMLMarker($parsoidData)
+	);
+}
+
 function computeListEltWidth($li) {
 	if (!$li->previousSibling && $li->firstChild) {
 		if (DU::isList($li->firstChild)) {
@@ -366,7 +376,7 @@ function computeNodeDSR($env, $node, $s, $e, $dsrCorrection, $opts) {
 					// Non-meta tags
 					if ($tsr && !isset($dp['autoInsertedStart'])) {
 						$cs = $tsr[0];
-						if (DU::tsrSpansTagDOM($child, $dp)) {
+						if (tsrSpansTagDOM($child, $dp)) {
 							if (!$ce || $tsr[1] > $ce) {
 								$ce = $tsr[1];
 								$propagateRight = true;
@@ -410,13 +420,7 @@ function computeNodeDSR($env, $node, $s, $e, $dsrCorrection, $opts) {
 				 * we don't have to worry about the above decisions and checks.
 				 * ----------------------------------------------------------------- */
 
-				if ($dp && isset($dp['tmp']) && $dp['tmp']['nativeExt']) {
-					// Similar to the fragment wrapper.  We're eventually going
-					// to drop dsr from encapsulated content anyways and passing
-					// through modified tokens is sometimes easier than dom
-					// fragment wrapping.
-					$newDsr = [$ccs, $cce];
-				} else if (DU::isDOMFragmentWrapper($child)) {
+				if (DU::isDOMFragmentWrapper($child)) {
 					// Eliminate artificial $cs/s mismatch warnings since this is
 					// just a wrapper token with the right DSR but without any
 					// nested subtree that could account for the DSR span.
