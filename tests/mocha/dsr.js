@@ -5,7 +5,7 @@
 require('../../core-upgrade.js');
 
 var should = require("chai").should();
-var DU = require('../../lib/utils/DOMUtils.js').DOMUtils;
+var DOMDataUtils = require('../../lib/utils/DOMDataUtils.js').DOMDataUtils;
 var ParsoidConfig = require('../../lib/config/ParsoidConfig.js').ParsoidConfig;
 var helpers = require('./test.helpers.js');
 
@@ -23,7 +23,7 @@ function validateSpec(wt, doc, spec) {
 	var body = doc.body;
 	var elts = body.querySelectorAll(spec.selector);
 	elts.length.should.equal(1);
-	var dp = DU.getDataParsoid(elts[0]);
+	var dp = DOMDataUtils.getDataParsoid(elts[0]);
 	var dsr = dp.dsr;
 	should.exist(dsr);
 	dsr.should.be.an.instanceof(Array);
@@ -43,7 +43,7 @@ function runTests(name, tests) {
 			var wt = test.wt;
 			it('should be valid for ' + JSON.stringify(wt), function() {
 				return parse(wt).then(function(doc) {
-					test.specs.forEach(validateSpec.bind(null, wt, doc));
+					test.specs.forEach(spec => validateSpec(wt, doc, spec));
 				});
 			});
 		});
@@ -149,6 +149,13 @@ var preTests = [
 runTests('Indent-Pre', preTests);
 
 var htmlEltTests = [
+	{
+		wt:"<small>'''bold'''</small>",
+		specs: [
+			{ selector: 'body > p', dsrContent: ["<small>'''bold'''</small>", "", ""] },
+			{ selector: 'body > p > small', dsrContent: ["<small>'''bold'''</small>", "<small>", "</small>"] }
+		],
+	},
 ];
 runTests('HTML elements', htmlEltTests);
 

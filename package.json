@@ -1,7 +1,7 @@
 {
   "name": "parsoid",
   "description": "A bidirectional runtime wikitext parser. Converts back and forth between wikitext and HTML/XML DOM with RDFa.",
-  "version": "0.9.0",
+  "version": "0.10.0+git",
   "license": "GPL-2.0+",
   "dependencies": {
     "babybird": "^0.0.1",
@@ -26,6 +26,7 @@
     "service-runner": "^2.6.1",
     "simplediff": "^0.1.1",
     "uuid": "^3.2.1",
+    "wikimedia-langconv": "git+https://github.com/wikimedia/mediawiki-libs-LangConv.git#master",
     "worker-farm": "^1.6.0",
     "yargs": "^7.1.0"
   },
@@ -72,7 +73,7 @@
     "coverage": "npm run cover-mocha && npm run cover-parserTests && npm run cover-roundtrip && istanbul report",
     "coveralls": "cat ./coverage/lcov.info | coveralls && rm -rf ./coverage",
     "doc": "jsdoc -c jsdoc.json",
-    "nsp": "nsp check"
+    "nsp": "echo nsp has been shut down but 'npm audit' requires npm >= 6"
   },
   "repository": {
     "type": "git",

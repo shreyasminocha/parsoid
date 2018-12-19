@@ -106,7 +106,7 @@ class DefaultMap extends Map {
 function *readLines(inFile) {
 	const fd = fs.openSync(inFile, 'r');
 	try {
-		const buf = new Buffer(1024);
+		const buf = Buffer.alloc(1024);
 		const decoder = new StringDecoder('utf8');
 		let line = '';
 		let sawCR = false;
@@ -174,7 +174,7 @@ function readAttFile(inFile, handleState, handleFinal) {
 class DynamicBuffer {
 	constructor(chunkLength) {
 		this.chunkLength = chunkLength || 16384;
-		this.currBuff = new Buffer(this.chunkLength);
+		this.currBuff = Buffer.alloc(this.chunkLength);
 		this.buffNum = 0;
 		this.offset = 0;
 		this.buffers = [ this.currBuff ];
@@ -227,7 +227,7 @@ class DynamicBuffer {
 	}
 	_maybeCreateBuffers() {
 		while (this.buffNum >= this.buffers.length) {
-			this.buffers.push(new Buffer(this.chunkLength));
+			this.buffers.push(Buffer.alloc(this.chunkLength));
 			this.lastLength = 0;
 		}
 	}
@@ -550,7 +550,7 @@ function main() {
 				description: 'Converts trans-{conversion}, brack-{conversion}-noop, and brack-{conversion}-{inverse} in default locations',
 				alias: 'l',
 				conflicts: 'file',
-				nargs: 2,
+				array: true,
 			},
 			'brackets': {
 				description: 'Emit a bracket-location machine',
@@ -563,7 +563,7 @@ function main() {
 				alias: 'v',
 				boolean: true,
 			},
-		}).example('$0 -l tolatin tocyrillic');
+		}).example('$0 -l sr-ec sr-el');
 	const argv = yopts.argv;
 	if (argv.help) {
 		yopts.showHelp();
@@ -574,12 +574,12 @@ function main() {
 		processOne(argv.file, argv.output, argv.brackets);
 	} else if (argv.language) {
 		const convertLang = argv.language[0];
-		const inverseLang = argv.language[1];
+		const inverseLangs = argv.language.slice(1);
 		const baseDir = path.join(__dirname, '..', 'lib', 'language', 'fst');
 		for (const f of [
 			`trans-${convertLang}`,
 			`brack-${convertLang}-noop`,
-			`brack-${convertLang}-${inverseLang}` ]) {
+		].concat(inverseLangs.map(inv => `brack-${convertLang}-${inv}`))) {
 			if (argv.verbose) {
 				console.log(f);
 			}

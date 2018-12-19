@@ -1,17 +1,79 @@
+0.10.0 / 2018-12-05
+===================
+  Notable wt -&gt; html changes
+  * Parsoid HTML version bumped to 2.0.0
+  * Support for the Content Negotiation Protocol for negotiating HTML content versions
+  * Implement RFC T157418: Trim whitespace in wikitext headings, lists, tables
+  * Added support for template styles
+  * Expose content inside &lt;includeonly&gt; to editors via data-mw attribute
+  * Support directionality for references
+  * A bunch of cleanup and bug fixes in paragraph wrapping for improved compliance
+    with PHP parser output. Move to DOM based p-wrapping of unwrapped bare text
+  * Remove `html5-legacy` mode of ID generation
+  * Media-related:
+    - Use &lt;audio&gt; elements for rendering audio files
+    - Use `resource` attribute for [[Media:....]] links
+    - Image alt and link options can contain arbitrary wikitext which is stripped
+    - Support more link types in file alt/link options
+    - Increase the default height of mw:Audio to 32px
+    - Stop adding valign classes to block media
+    - Parse more block constructs in media captions
+  * A number of bug fixes and crasher fixes
+
+  Notable html -&gt; wt changes:
+  * Scrub DOM to convert &lt;p&gt;&lt;/p&gt; sequences to NL-emitting normal forms
+    This now translates empty lines entered in VE to empty lines in wikitext
+  * Add new lines before and after lists in wikitext
+  * Improve templatedata spec compliance wrt leading and trailing newlines
+  * Avoid piped links in more cases by moving formatting outside the link
+  * Handle | chars in hrefs
+  * Handle } in table cells
+  * Serialize empty table cells with a single whitespace character
+  * Don't force paragraphs inside blockquotes to serialize on a new line
+  * Distinguish between inserted & deleted diff markers
+
+  Infrastructure:
+  * Make the Sanitizer "static" and decouple it from the parsing pipeline
+  * Removed &lt; node v6 compatibility
+  * Migrate to jsdoc instead of jsduck for documentation
+  * Allow users to dynamically configure new wikis
+  * Addressed nsp-triggered security advisories
+  * Updated domino and other dependencies
+
+  Extensions
+  * Cleanup of the extension API to reduce exposure of Parsoid internals
+  * Migrated native Parsoid extensions to the updated extension API
+  * Native Parsoid implementation of &lt;poem&gt;
+
+  Performance fixes:
+  * Mostly minor tweaks:
+    - Performance improvements in the TokenTransformManager
+    - Add a fast path to avoid unnecessarily retokenizing the extlink href
+    - Test for a valid protocol before attempting to tokenize extlink content
+    - Ensure ref.cachedHtml isn't being regenerated needlessly
+    - Suppress autoInsertedEnd flags where not required
+
+  Cleanup:
+  * Split up large utility classes into smaller functional groups
+  * More native ES6 classes
+  * More native ES6 syntax (let, const, yield)
+  * A whole bunch of dead code removed
+  * Cleanup return types in Token Transformers
+
 0.9.0 / 2018-03-23
 ==================
-  Notable wt -> html changes
+  Notable wt -&gt; html changes
   * Parsoid HTML version bumped to 1.6.1
-  * T114072: Add <section> wrappers to Parsoid output
+  * T114072: Add &lt;section&gt; wrappers to Parsoid output
   * T118520: Use figure-inline instead of span for inline media
   * Update Parsoid to generate modern HTML5 IDs w/ legacy fallback
   * T58756: External links class= now setting free, text and autonumber
-  * T45094: Replace <span> with <sup> for references
+  * T45094: Replace &lt;span&gt; with &lt;sup&gt; for references
   * T97093: Use mw:WikiLink/Interwiki for interwiki links
   * Permit extension tags in xmlish attribute values
   * A number of bug fixes and crasher fixes
 
-  Notable html -> wt changes:
+  Notable html -&gt; wt changes:
   * Preserve original transclusion's parameter order
   * T180930: Selser shouldn't reuse orig sep for autoinserted tags
 
@@ -28,7 +90,7 @@
 
   Extensions
   * Match core's parsing of gallery dimensions
-  * Added <section> and <indicator> extension handling.
+  * Added &lt;section&gt; and &lt;indicator&gt; extension handling.
 
   Performance fixes:
   * Don't process token attributes unnecessarily
@@ -49,7 +111,7 @@
 
 0.8.0 / 2017-10-24
 ==================
-  Notable wt -> html changes:
+  Notable wt -&gt; html changes:
   * T43716: Parse and serialize language converter markup
   * T64270: Support video and audio content
   * T39902, T149794: Markup red links, disambiguation links in Parsoid HTML
@@ -64,7 +126,7 @@
   * Stop using usePHPPreProcessor as a proxy for an existing mw api to parse extensions
   * Several bug fixes
 
-  Notable html -> wt changes:
+  Notable html -&gt; wt changes:
   * T135667, T138492: Use improved format specifier for TemplateData enabling templates
     to control formatting of transclusions after VE edits
   * T153107: Fix unhandled detection of modified link content
@@ -113,7 +175,7 @@
 0.7.0 / 2017-04-04
 ==================
 
-  wt -> html changes:
+  wt -&gt; html changes:
   * T102209: Assign ids to H[1-6] tags that match PHP parser's assignment
   * T150112: Munge link fragments and element ids as in the php parser
   * T59603: T133267: Escape extlink content when containing ] anywhere
@@ -135,7 +197,7 @@
   * Edge case bug fixes in aynsc token transformation pipeline
   * Several fixes to the linting code to support the PHP Linter extension
 
-  html -> wt changes:
+  html -&gt; wt changes:
   * T149209: Handle newlines in TD and TH cells
   * T160207: Fix serializing multi-line indent-pre w/ sol wt syntax
   * T133267: Escape extlink content when containing ] anywhere
@@ -182,7 +244,7 @@
 0.6.0 / 2016-11-07
 ==================
 
-  wt -> html changes:
+  wt -&gt; html changes:
   * T147742: Trim template target after stripping comments
   * T142617: Handle invalid titles in transclusions
   * Handle caption-like text outside tables
@@ -191,7 +253,7 @@
   * Handle HTML tags in attribute text properly
   * A bunch of cleanup and fixes in the PEG tokenizer
 
-  html -> wt changes:
+  html -&gt; wt changes:
   * T134389: Serialize content in HTML tables using HTML tags
   * T125419: Fix selser issues serializing first table row
   * T137406: Emit |- between thead/tbody/tfoot

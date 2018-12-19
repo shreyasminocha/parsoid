@@ -12,6 +12,14 @@ const PARSOID_TEST_FOMA = process.env.PARSOID_TEST_FOMA || false;
 
 const langs = [
 	{
+		base: 'crh',
+		variants: [
+			['crh-latn', 'crh-cyrl'],
+			['crh-cyrl', 'crh-latn'],
+		],
+		examples: true,
+	},
+	{
 		base: 'en',
 		variants: [
 			['en', 'en-x-piglatin'],
@@ -34,6 +42,19 @@ const langs = [
 			['sr-ec', 'sr-el'],
 		],
 		examples: true,
+	},
+	{
+		base: 'zh',
+		variants: [
+			['zh-tw','zh-cn','zh-hans'],
+			['zh-hk','zh-hans'],
+			['zh-mo','zh-hans'],
+			['zh-hant','zh-hans'],
+			['zh-cn','zh-tw','zh-hant'],
+			['zh-sg','zh-hant'],
+			['zh-my','zh-hant'],
+			['zh-hans','zh-hant'],
+		],
 	},
 ];
 

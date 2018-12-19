@@ -7,15 +7,28 @@
 require('../core-upgrade.js');
 
 var colors = require('colors');
+var entities = require('entities');
 var yargs = require('yargs');
 
 var Diff = require('../lib/utils/Diff.js').Diff;
-var DU = require('../lib/utils/DOMUtils.js').DOMUtils;
-var Util = require('../lib/utils/Util.js').Util;
+var ContentUtils = require('../lib/utils/ContentUtils.js').ContentUtils;
+var DOMUtils = require('../lib/utils/DOMUtils.js').DOMUtils;
 var ScriptUtils = require('../tools/ScriptUtils.js').ScriptUtils;
+var Util = require('../lib/utils/Util.js').Util;
+var WTUtils = require('../lib/utils/WTUtils.js').WTUtils;
 var Normalizer = require('../lib/html2wt/normalizeDOM.js').Normalizer;
 
 var TestUtils = {};
+
+/**
+ * Little helper function for encoding XML entities.
+ *
+ * @param {string} string
+ * @return {string}
+ */
+TestUtils.encodeXml = function(string) {
+	return entities.encodeXML(string);
+};
 
 /**
  * Specialized normalization of the PHP parser & Parsoid output, to ignore
@@ -41,7 +54,7 @@ TestUtils.normalizeOut = function(domBody, options) {
 	const parsoidOnly = options.parsoidOnly;
 	const preserveIEW = options.preserveIEW;
 	if (typeof (domBody) === 'string') {
-		domBody = DU.parseHTML(domBody).body;
+		domBody = DOMUtils.parseHTML(domBody).body;
 	}
 
 	if (options.scrubWikitext) {
@@ -71,7 +84,7 @@ TestUtils.normalizeOut = function(domBody, options) {
 		/(?:^|mw:DisplaySpace\s+)mw:Placeholder$/ :
 		/^mw:(?:(?:DisplaySpace\s+mw:)?Placeholder|Nowiki|Transclusion|Entity)$/;
 	domBody = this.unwrapSpansAndNormalizeIEW(domBody, stripTypeof, parsoidOnly, preserveIEW);
-	var out = DU.toXML(domBody, { innerXML: true });
+	var out = ContentUtils.toXML(domBody, { innerXML: true });
 	// NOTE that we use a slightly restricted regexp for "attribute"
 	//  which works for the output of DOM serialization.  For example,
 	//  we know that attribute values will be surrounded with double quotes,
@@ -175,7 +188,7 @@ TestUtils.unwrapSpansAndNormalizeIEW = function(body, stripSpanTypeof, parsoidOn
 		// first recurse to unwrap any spans in the immediate children.
 		cleanSpans(node);
 		// now unwrap this span.
-		DU.migrateChildren(node, parent, node);
+		DOMUtils.migrateChildren(node, parent, node);
 		parent.removeChild(node);
 	};
 	var visit = function(node, stripLeadingWS, stripTrailingWS, inPRE) {
@@ -184,7 +197,7 @@ TestUtils.unwrapSpansAndNormalizeIEW = function(body, stripSpanTypeof, parsoidOn
 			// Preserve newlines in <pre> tags
 			inPRE = true;
 		}
-		if (!preserveIEW && DU.isText(node)) {
+		if (!preserveIEW && DOMUtils.isText(node)) {
 			if (!inPRE) {
 				node.data = node.data.replace(/\s+/g, ' ');
 			}
@@ -201,7 +214,7 @@ TestUtils.unwrapSpansAndNormalizeIEW = function(body, stripSpanTypeof, parsoidOn
 		if (!parsoidOnly) {
 			for (child = node.firstChild; child; child = next) {
 				next = child.nextSibling;
-				if (DU.isComment(child)) {
+				if (DOMUtils.isComment(child)) {
 					node.removeChild(child);
 				}
 			}
@@ -223,7 +236,7 @@ TestUtils.unwrapSpansAndNormalizeIEW = function(body, stripSpanTypeof, parsoidOn
 		// Skip over the empty mw:FallbackId <span> and strip leading WS
 		// on the other side of it.
 		if (/^H[1-6]$/.test(node.nodeName) &&
-			child && DU.isFallbackIdSpan(child)) {
+			child && WTUtils.isFallbackIdSpan(child)) {
 			child = child.nextSibling;
 		}
 		for (; child; child = next) {
@@ -240,13 +253,13 @@ TestUtils.unwrapSpansAndNormalizeIEW = function(body, stripSpanTypeof, parsoidOn
 			prev = child.previousSibling;
 			next = child.nextSibling;
 			if (newlineAround(child)) {
-				if (prev && DU.isText(prev)) {
+				if (prev && DOMUtils.isText(prev)) {
 					prev.data = prev.data.replace(/\s*$/, '\n');
 				} else {
 					prev = node.ownerDocument.createTextNode('\n');
 					node.insertBefore(prev, child);
 				}
-				if (next && DU.isText(next)) {
+				if (next && DOMUtils.isText(next)) {
 					next.data = next.data.replace(/^\s*/, '\n');
 				} else {
 					next = node.ownerDocument.createTextNode('\n');
@@ -280,8 +293,8 @@ TestUtils.normalizePhpOutput = function(html) {
  */
 TestUtils.normalizeHTML = function(source) {
 	try {
-		var body = this.unwrapSpansAndNormalizeIEW(DU.parseHTML(source).body);
-		var html = DU.toXML(body, { innerXML: true })
+		var body = this.unwrapSpansAndNormalizeIEW(DOMUtils.parseHTML(source).body);
+		var html = ContentUtils.toXML(body, { innerXML: true })
 			// a few things we ignore for now..
 			//  .replace(/\/wiki\/Main_Page/g, 'Main Page')
 			// do not expect a toc for now
@@ -693,7 +706,7 @@ function printResult(reportFailure, reportSuccess, bl, wl, stats, item, options,
 	if (fail &&
 		ScriptUtils.booleanOption(options.whitelist) &&
 		title in wl &&
-		TestUtils.normalizeOut(DU.parseHTML(wl[title]).body, { parsoidOnly: parsoidOnly }) ===  actual.normal
+		TestUtils.normalizeOut(DOMUtils.parseHTML(wl[title]).body, { parsoidOnly: parsoidOnly }) ===  actual.normal
 	) {
 		whitelist = true;
 		fail = false;
@@ -751,19 +764,19 @@ var getActualExpectedXML = function(actual, expected, getDiff) {
 	var returnStr = '';
 
 	returnStr += 'RAW EXPECTED:\n';
-	returnStr += DU.encodeXml(expected.raw) + '\n\n';
+	returnStr += TestUtils.encodeXml(expected.raw) + '\n\n';
 
 	returnStr += 'RAW RENDERED:\n';
-	returnStr += DU.encodeXml(actual.raw) + '\n\n';
+	returnStr += TestUtils.encodeXml(actual.raw) + '\n\n';
 
 	returnStr += 'NORMALIZED EXPECTED:\n';
-	returnStr += DU.encodeXml(expected.normal) + '\n\n';
+	returnStr += TestUtils.encodeXml(expected.normal) + '\n\n';
 
 	returnStr += 'NORMALIZED RENDERED:\n';
-	returnStr += DU.encodeXml(actual.normal) + '\n\n';
+	returnStr += TestUtils.encodeXml(actual.normal) + '\n\n';
 
 	returnStr += 'DIFF:\n';
-	returnStr += DU.encodeXml(getDiff(actual, expected, false));
+	returnStr += TestUtils.encodeXml(getDiff(actual, expected, false));
 
 	return returnStr;
 };
@@ -842,7 +855,7 @@ var reportSuccessXML = function(stats, item, options, mode, title, expectSuccess
 var reportResultXML = function() {
 	function pre(stats, mode, title, time) {
 		var testcaseEle;
-		testcaseEle = '<testcase name="' + DU.encodeXml(title) + '" ';
+		testcaseEle = '<testcase name="' + TestUtils.encodeXml(title) + '" ';
 		testcaseEle += 'assertions="1" ';
 
 		var timeTotal;
@@ -1084,7 +1097,7 @@ TestUtils.prepareOptions = function() {
 	if (typeof options.reportResult !== 'function') {
 		// default result reporting is standard out,
 		// see printResult for documentation of the default.
-		options.reportResult = printResult.bind(null, options.reportFailure, options.reportSuccess);
+		options.reportResult = (...args) => printResult(options.reportFailure, options.reportSuccess, ...args);
 	}
 
 	if (typeof options.getDiff !== 'function') {
