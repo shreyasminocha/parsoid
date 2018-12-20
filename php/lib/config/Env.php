@@ -8,17 +8,19 @@ class Env {
 	}
 
 	public function log() {
-		/*
-		$arguments = func_get_args();
-		$output = $arguments[0];
-		for ($index = 1; $index < sizeof($arguments); $index++) {
-            if (is_callable($arguments[$index])) {
-				$output = $output . ' ' . $arguments[$index]();
-			} else {
-				$output = $output . ' ' . $arguments[$index];
+		global $logFlag;
+
+		if (isset($logFlag) && $logFlag) {
+			$arguments = func_get_args();
+			$output = $arguments[0];
+			for ($index = 1; $index < sizeof($arguments); $index++) {
+				if (is_callable($arguments[$index])) {
+					$output = $output . ' ' . $arguments[$index]();
+				} else {
+					$output = $output . ' ' . $arguments[$index];
+				}
 			}
+			echo $output . "\n";
 		}
-		echo  $output . "\n";
-		*/
 	}
 }

@@ -26,6 +26,7 @@ use Parsoid\Lib\Utils\DU;
 $cachedState = false;
 $cachedFilePre = '';
 $cachedFilePost = '';
+$logFlag = false;
 
 WikitextConstants::init();
 DU::init();
@@ -133,8 +134,8 @@ class MockDOMPostProcessor
 			}
 
 			if ($opts->debug_dump) {
-				file_put_contents('temporaryPre.txt', $domPre);
-				$console->log("temporaryPre.txt saved!\n");
+				file_put_contents('temporaryPrePhp.txt', $domPre);
+				$console->log("temporaryPrePhp.txt saved!\n");
 			}
 		}
 
@@ -181,13 +182,9 @@ class MockDOMPostProcessor
 			}
 
 			if ($opts->debug_dump) {
-				file_put_contents('temporaryPost.txt', $domPost);
-				$console->log("temporaryPost.txt saved!\n");
+				file_put_contents('temporaryPostPhp.txt', $domPost);
+				$console->log("temporaryPostPhp.txt saved!\n");
 			}
-		}
-
-		if (isset($dump_dom)) {
-			$console->log($domPost);
 		}
 
 		return $numFailures;
@@ -257,9 +254,12 @@ function processArguments($argc, $argv) {
 
 function runTests($argc, $argv) {
 	global $console;
+	global $logFlag;
 	$numFailures = 0;
 
 	$opts = processArguments($argc, $argv);
+	$opts->firstRun = true;
+	$opts->debug_dump = false;
 
 	if (isset($opts->help)) {
 		$console->log("must specify [--timingMode] [--iterationCount=XXX] --transformer NAME --inputFile path/wikiName\n");
@@ -276,10 +276,9 @@ function runTests($argc, $argv) {
 
 	$mockEnv = (object)[];
 	$manager = new MockDOMPostProcessor($mockEnv, function () {});
+
 	if (isset($opts->log)) {
-		$manager->env = [ 'log' => [ $manager, 'log' ] ];
-	} else {
-		$manager->env = [ 'log' => function () {} ];	// this disables detailed logging
+		$logFlag = true;
 	}
 
 	if (isset($opts->timingMode)) {
