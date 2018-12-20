@@ -50,7 +50,7 @@
 "bell"
 {"type":"SelfclosingTagTk","name":"mw-quote","attribs":[{"k":"value", "v": "''"}],"dataAttribs":{"tsr":[7,9]}}
 {"type":"NlTk","dataAttribs":{"tsr":[9,10]}}
-["'",{"type":"TagTk","name":"i","attribs":[],"dataAttribs":{"tsr":[1,3]}},"horn",{"type":"EndTagTk","name":"i","attribs":[],"dataAttribs":{"tsr":[7,9]}},{"type":"NlTk","dataAttribs":{"tsr":[9,10]}}]
+["'",{"type":"TagTk","name":"i","attribs":[],"dataAttribs":{"tsr":[1,3]}},"bell",{"type":"EndTagTk","name":"i","attribs":[],"dataAttribs":{"tsr":[7,9]}},{"type":"NlTk","dataAttribs":{"tsr":[9,10]}}]
 
 # End of QuoteTransformer unit tests
 
