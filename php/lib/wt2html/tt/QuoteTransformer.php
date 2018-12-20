@@ -79,7 +79,7 @@ class QuoteTransformer extends TokenHandler {
 		#var_dump($token);
 		$v = $token->getAttribute('value');
 		$qlen = strlen($v);
-		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "QUOTE |", json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "QUOTE |", json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
 		if (!$this->isActive) {
 			$this->manager->addTransform([$this, 'processQuotes'],
@@ -113,7 +113,7 @@ class QuoteTransformer extends TokenHandler {
 	}
 
 	public function onAny($token) {
-		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "ANY   |", function () use($token) {
+		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "ANY   |", function () use($token) {
 			return (!isset($this->isActive) ? " ---> " : "") . json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		});
 
@@ -126,7 +126,7 @@ class QuoteTransformer extends TokenHandler {
  * collected quote tokens so far.
  */
 	public function processQuotes($token) {
-		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "NL    |", function () use($token) {
+		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "NL    |", function () use($token) {
 			return (!isset($this->isActive) ? " ---> " : "") . json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		});
 
@@ -225,7 +225,7 @@ class QuoteTransformer extends TokenHandler {
 		array_shift($this->chunks[0]); // remove 'prevToken' before first quote.
 		$res = [ "tokens" => array_flatten(array_merge([], $this->chunks)) ];
 
-		$this->manager->env["log"]("trace/quote", $this->manager->pipelineId, "----->", json_encode($res["tokens"], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "----->", json_encode($res["tokens"], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
 	// prepare for next line
 		$this->reset();

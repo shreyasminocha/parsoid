@@ -59,8 +59,9 @@ require_once (__DIR__.'/../lib/wt2html/pp/processors/computeDSR.php');
 require_once (__DIR__.'/../lib/wt2html/pp/processors/wrapSections.php');
 require_once (__DIR__.'/../lib/wt2html/pp/processors/cleanupFormattingTagFixup.php');
 require_once (__DIR__.'/../lib/wt2html/pp/processors/pwrap.php');
+require_once (__DIR__.'/../tests/MockEnv.php');
 
-use Parsoid\Lib\Config\Env;
+use Parsoid\Tests\MockEnv;
 use Parsoid\Lib\Config\WikitextConstants;
 use Parsoid\Lib\PHPUtils\PHPUtil;
 use Parsoid\Lib\Utils\DU;
@@ -107,28 +108,11 @@ class MockDOMPostProcessor
 	public $env;
 
 	public function __construct($env, $options) {
-		// $env->log = function($log){};
-		$env->conf = (object)[];
-		$env->conf->parsoid = (object)[];
-		$env->conf->parsoid->rtTestMode = false;
 		$this->env = $env;
 		$this->pipelineId = 0;
 		$this->options = $options;
 		$this->domTransforms = [];
 		$this->transformTime = 0;
-	}
-
-	public function log() {
-		$arguments = func_get_args();
-		$output = $arguments[0];
-		for ($index = 1; $index < sizeof($arguments); $index++) {
-			if (is_callable($arguments[$index])) {
-				$output = $output . ' ' . $arguments[$index]();
-			} else {
-				$output = $output . ' ' . $arguments[$index];
-			}
-		}
-		$this->console->log($output . "\n");
 	}
 
 	public function processWikitextFile($opts) {
@@ -155,7 +139,7 @@ class MockDOMPostProcessor
 
 		$domBuilder = new DOM\DOMBuilder;
 		$serializer = new DOM\DOMSerializer($domBuilder, new Serializer\HtmlFormatter);
-		$env = new Env();
+		$env = new MockEnv();
 
 		$dom = buildDOM($domBuilder, $testFilePre);
 
@@ -312,12 +296,8 @@ function runTests($argc, $argv) {
 		return;
 	}
 
-	$mockEnv = (object)[];
-	$manager = new MockDOMPostProcessor($mockEnv, function () {});
-
-	if (isset($opts->log)) {
-		$logFlag = true;
-	}
+	$mockEnv = new MockEnv($opts);
+	$manager = new MockDOMPostProcessor($mockEnv, []);
 
 	if (isset($opts->timingMode)) {
 		$console->log("Timing Mode enabled, no console output expected till test completes\n");

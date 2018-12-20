@@ -56,16 +56,17 @@ Technical details:
 
 require_once (__DIR__.'/../vendor/autoload.php');
 
-require_once (__DIR__.'/../lib/config/Env.php');
 require_once (__DIR__.'/../lib/config/WikitextConstants.php');
 require_once (__DIR__.'/../lib/utils/phputils.php');
 
 require_once (__DIR__.'/../lib/wt2html/parser.defines.php');
 require_once (__DIR__.'/../lib/wt2html/tt/QuoteTransformer.php');
 require_once (__DIR__.'/../lib/wt2html/tt/ParagraphWrapper.php');
+require_once (__DIR__.'/../tests/MockEnv.php');
+
+use Parsoid\Tests\MockEnv;
 
 use Parsoid\Lib\Config;
-use Parsoid\Lib\Config\Env;
 use Parsoid\Lib\Config\WikitextConstants;
 use Parsoid\Lib\PHPUtils\PHPUtil;
 use Parsoid\Lib\Wt2html\KV;
@@ -141,33 +142,19 @@ class MockTTM {
 		$this->init();
 	}
 
-	public function log() {
-		$arguments = func_get_args();
-		$output = $arguments[0];
-		for ($index = 1; $index < sizeof($arguments); $index++) {
-            if (is_callable($arguments[$index])) {
-				$output = $output . ' ' . $arguments[$index]();
-			} else {
-				$output = $output . ' ' . $arguments[$index];
-			}
-		}
-		$this->console->log($output . "\n");
-	}
-
-    public function init()
-    {
+	public function init() {
 // Map of: token constructor ==> transfomer type
 // Used for returning active transformers for a token
-        $this->tkConstructorToTkTypeMap = makeMap([
-            ['String', 'text'],
-            ['NlTk', 'newline'],
-            ['CommentTk', 'comment'],
-            ['EOFTk', 'end'],
-            ['TagTk', 'tag'],
-            ['EndTagTk', 'tag'],
-            ['SelfclosingTagTk', 'tag'],
-        ]);
-    }
+		$this->tkConstructorToTkTypeMap = makeMap([
+			['String', 'text'],
+			['NlTk', 'newline'],
+			['CommentTk', 'comment'],
+			['EOFTk', 'end'],
+			['TagTk', 'tag'],
+			['EndTagTk', 'tag'],
+			['SelfclosingTagTk', 'tag'],
+		]);
+	}
 
 	public static function tokenTransformersKey($tkType, $tagName) {
 		return ($tkType === 'tag') ? "tag:" . $tagName : $tkType;
@@ -645,13 +632,8 @@ function runTests($argc, $argv) {
 		return;
 	}
 
-	$mockEnv = [];
-	$manager = new MockTTM($mockEnv, function () {});
-	if (isset($opts->log)) {
-		$manager->env = [ 'log' => [ $manager, 'log' ] ];
-	} else {
-		$manager->env = [ 'log' => function () {} ];	// this disables detailed logging
-	}
+	$mockEnv = new MockEnv($opts);
+	$manager = new MockTTM($mockEnv, []);
 
 	if (isset($opts->timingMode)) {
 		$console->log("Timing Mode enabled, no console output expected till test completes\n");
@@ -703,4 +685,3 @@ function runTests($argc, $argv) {
 runTests($argc, $argv);
 
 ?>
-

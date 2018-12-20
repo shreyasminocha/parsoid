@@ -151,7 +151,7 @@ class ParagraphWrapper extends TokenHandler {
 			$res = array_merge($res, $this->currLine["tokens"]);
 			$this->resetCurrLine();
 		}
-		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($res) {
+		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($res) {
 			return json_encode($res, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		});
 		# FIXME!!
@@ -162,11 +162,11 @@ class ParagraphWrapper extends TokenHandler {
 	public function _flushBuffers() {
 		// Assertion to catch bugs in p-wrapping; both cannot be true.
 		if ($this->newLineCount > 0) {
-			$this->manager->env["log"]("error/p-wrap", "Failed assertion in _flushBuffers: newline-count:", $this->newLineCount, "; buffered tokens: ", json_encode($this->nlWsTokens, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+			$this->manager->env->log("error/p-wrap", "Failed assertion in _flushBuffers: newline-count:", $this->newLineCount, "; buffered tokens: ", json_encode($this->nlWsTokens, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 		}
 		$resToks = array_merge($this->tokenBuffer, $this->nlWsTokens);
 		$this->resetBuffers();
-		$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($resToks) {
+		$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($resToks) {
 			return json_encode($resToks, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		});
 		# FIXME!!
@@ -262,7 +262,7 @@ class ParagraphWrapper extends TokenHandler {
 
 	// Handle NEWLINE tokens
 	public function onNewLineOrEOF($token) {
-		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "NL    |", function () use($token) {
+		$this->manager->env->log("trace/p-wrap", $this->manager->pipelineId, "NL    |", function () use($token) {
 			return json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		});
 		$l = $this->currLine;
@@ -274,7 +274,7 @@ class ParagraphWrapper extends TokenHandler {
 
 		// Assertion to catch bugs in p-wrapping; both cannot be true.
 		if ($this->newLineCount > 0 && count($l["tokens"]) > 0) {
-			$this->env["log"]("error/p-wrap", "Failed assertion in onNewLineOrEOF: newline-count:", $this->newLineCount, "; current line tokens: ", json_encode($l["tokens"], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+			$this->env->log("error/p-wrap", "Failed assertion in onNewLineOrEOF: newline-count:", $this->newLineCount, "; current line tokens: ", json_encode($l["tokens"], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 		}
 
 		$this->tokenBuffer = array_merge($this->tokenBuffer, $l["tokens"]);
@@ -284,7 +284,7 @@ class ParagraphWrapper extends TokenHandler {
 			$this->closeOpenPTag($this->tokenBuffer);
 			$res = $this->processPendingNLs();
 			$this->reset();
-			$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($res) {
+			$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($res) {
 				return json_encode($res, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 			});
 			# FIXME!!
@@ -303,7 +303,7 @@ class ParagraphWrapper extends TokenHandler {
 		$newLineCount = $this->newLineCount;
 		$nlTk = null;
 
-		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "        NL-count:", $newLineCount);
+		$this->manager->env->log("trace/p-wrap", $this->manager->pipelineId, "        NL-count:", $newLineCount);
 
 		if ($newLineCount >= 2 && !$this->inBlockElem) {
 			$this->closeOpenPTag($resToks);
@@ -352,7 +352,7 @@ class ParagraphWrapper extends TokenHandler {
 
 	public function onAny($token) {
 		global $blockElems, $antiBlockElems, $alwaysSuppress, $neverSuppress;
-		$this->manager->env["log"]("trace/p-wrap", $this->manager->pipelineId, "ANY   |", function () use($token) {
+		$this->manager->env->log("trace/p-wrap", $this->manager->pipelineId, "ANY   |", function () use($token) {
 			return json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		});
 		$res = null;
@@ -386,7 +386,7 @@ class ParagraphWrapper extends TokenHandler {
 					$this->inPre = false;
 				}
 				$this->currLine["closeMatch"] = true;
-				$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($token) {
+				$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($token) {
 					return json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 				});
 				$res = [ $token ];
@@ -395,7 +395,7 @@ class ParagraphWrapper extends TokenHandler {
 				return [ "tokens" => $res ];
 			}
 		} else if ($tc === "EOFTk" || $this->inPre) {
-			$this->env["log"]("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($token) {
+			$this->env->log("trace/p-wrap", $this->manager->pipelineId, "---->  ", function () use($token) {
 				return json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 			});
 			$res = [ $token ];
