@@ -20,6 +20,13 @@ function getSrc($env, $s, $e) {
 	return null; // Force a crash
 }
 
+function portingFIXME($section) {
+	// FIXME: This is a temporary port-related hack while we
+	// don't yet have all DOMDataUtils ported over to ensure
+	// that new nodes have the empty data-parsoid just like the JS version.
+	$section->setAttribute('data-parsoid', '{}');
+}
+
 function createNewSection($state, $rootNode, $sectionStack, $tplInfo, $currSection, $node, $newLevel, $pseudoSection) {
 	/* Structure for regular (editable or not) sections
 	 *   <section data-mw-section-id="..">
@@ -86,6 +93,8 @@ function createNewSection($state, $rootNode, $sectionStack, $tplInfo, $currSecti
 	} else {
 		$section["container"]->setAttribute('data-mw-section-id', $state["sectionNumber"]);
 	}
+
+	portingFIXME($section["container"]);
 
 	/* Ensure that template continuity is not broken if the section
 	 * tags aren't stripped by a client */
@@ -327,6 +336,7 @@ function wrapSections($rootNode, $env, $options) {
 		"lead" => true
 	];
 	$leadSection["container"]->setAttribute('data-mw-section-id', 0);
+	portingFIXME($leadSection["container"]);
 
 	// Global $state
 	$state = [
