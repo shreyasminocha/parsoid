@@ -5,8 +5,7 @@ namespace Parsoid\Lib\Utils;
 class Util {
 	private static $WtTagsWithLimitedTSR;
 
-	public static function init() {
-	}
+	public static function init() { }
 
 	public static function lookupKV( $kvs, $key ) {
 		if (!isset($kvs)) {

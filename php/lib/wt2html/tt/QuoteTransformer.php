@@ -9,7 +9,9 @@ namespace Parsoid\Lib\Wt2html\TT;
 require_once (__DIR__.'/TokenHandler.php');
 require_once (__DIR__.'/../parser.defines.php');
 require_once (__DIR__.'/../../utils/Utils.php');
+require_once (__DIR__.'/../../utils/phputils.php');
 
+use Parsoid\Lib\PHPUtils\PHPUtil;
 use Parsoid\Lib\Utils\Util;
 use Parsoid\Lib\Wt2html\TagTk;
 use Parsoid\Lib\Wt2html\EndTagTk;
@@ -79,7 +81,7 @@ class QuoteTransformer extends TokenHandler {
 		#var_dump($token);
 		$v = $token->getAttribute('value');
 		$qlen = strlen($v);
-		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "QUOTE |", json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "QUOTE |", PHPUtil::json_encode($token));
 
 		if (!$this->isActive) {
 			$this->manager->addTransform([$this, 'processQuotes'],
@@ -114,7 +116,7 @@ class QuoteTransformer extends TokenHandler {
 
 	public function onAny($token) {
 		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "ANY   |", function () use($token) {
-			return (!isset($this->isActive) ? " ---> " : "") . json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+			return (!isset($this->isActive) ? " ---> " : "") . PHPUtil::json_encode($token);
 		});
 
 		$this->currentChunk[] = $token;
@@ -127,7 +129,7 @@ class QuoteTransformer extends TokenHandler {
  */
 	public function processQuotes($token) {
 		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "NL    |", function () use($token) {
-			return (!isset($this->isActive) ? " ---> " : "") . json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+			return (!isset($this->isActive) ? " ---> " : "") . PHPUtil::json_encode($token);
 		});
 
 		if (Util::getType($token) !== 'String' &&
@@ -225,7 +227,7 @@ class QuoteTransformer extends TokenHandler {
 		array_shift($this->chunks[0]); // remove 'prevToken' before first quote.
 		$res = [ "tokens" => array_flatten(array_merge([], $this->chunks)) ];
 
-		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "----->", json_encode($res["tokens"], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$this->manager->env->log("trace/quote", $this->manager->pipelineId, "----->", PHPUtil::json_encode($res["tokens"]));
 
 	// prepare for next line
 		$this->reset();

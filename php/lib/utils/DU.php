@@ -3,8 +3,10 @@
 namespace Parsoid\Lib\Utils;
 
 require_once __DIR__."/../config/WikitextConstants.php";
+require_once __DIR__."/phputils.php";
 require_once __DIR__."/TokenUtils.php";
 
+use Parsoid\Lib\PHPUtils\PHPUtil;
 use Parsoid\Lib\Config\WikitextConstants;
 use Parsoid\Lib\Utils\TokenUtils;
 
@@ -107,7 +109,7 @@ class DU {
 	}
 
 	public static function setDataParsoid( $node, $dp ) {
-		$node->setAttribute( 'data-parsoid', json_encode( $dp ) );
+		$node->setAttribute( 'data-parsoid', PHPUtil::json_encode( $dp ) );
 	}
 
 	public static function getDataMW( $node ) {
@@ -117,7 +119,7 @@ class DU {
 	}
 
 	public static function setDataMW( $node, $dp ) {
-		$node->setAttribute( 'data-mw', json_encode( $dp ) );
+		$node->setAttribute( 'data-mw', PHPUtil::json_encode( $dp ));
 	}
 
 	/**

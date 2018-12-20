@@ -4,9 +4,11 @@ namespace Parsoid\Lib\Wt2Html\PP\Processors;
 
 require_once __DIR__."/../../../config/WikitextConstants.php";
 require_once __DIR__."/../../../utils/DU.php";
+require_once __DIR__."/../../../utils/phputils.php";
 
 use Parsoid\Lib\Config\WikitextConstants;
 use Parsoid\Lib\Utils\DU;
+use Parsoid\Lib\PHPUtils\PHPUtil;
 
 function acceptableInconsistency($opts, $node, $cs, $s) {
 	/**
@@ -161,7 +163,7 @@ function trace() {
 	$env->log("trace/dsr", function() use ($args) {
 		$buf = '';
 		foreach ($args as $arg) {
-			$buf .= (gettype($arg) === 'string' ? $arg : json_encode($arg));
+			$buf .= (gettype($arg) === 'string' ? $arg : PHPUtil::json_encode($arg));
 		}
 		return $buf;
 	});
@@ -261,7 +263,7 @@ function computeNodeDSR($env, $node, $s, $e, $dsrCorrection, $opts) {
 				(DU::isElt($child) ? '' : (DU::isText($child) ? '#' : '!')) .
 				(DU::isElt($child) ?
 					($child->nodeName === 'meta' ? $child->ownerDocument->saveHTML($child) : $child->nodeName) :
-					json_encode($child->data)) .  " with " . json_encode([$cs, $ce]);
+					PHPUtil::json_encode($child->data)) .  " with " . PHPUtil::json_encode([$cs, $ce]);
 		});
 
 		if ($cType === 3) {
@@ -445,9 +447,9 @@ function computeNodeDSR($env, $node, $s, $e, $dsrCorrection, $opts) {
 				} else {
 					$env->log("trace/dsr", function() use ($cs, $ce, $stWidth, $etWidth, $ccs, $cce) {
 						return "     before-recursing:" .
-							"[cs,ce]=" . json_encode([$cs, $ce]) .
-							"; [sw,ew]=" . json_encode([$stWidth, $etWidth]) .
-							"; subtree-[cs,ce]=" . json_encode([$ccs,$cce]);
+							"[cs,ce]=" . PHPUtil::json_encode([$cs, $ce]) .
+							"; [sw,ew]=" . PHPUtil::json_encode([$stWidth, $etWidth]) .
+							"; subtree-[cs,ce]=" . PHPUtil::json_encode([$ccs,$cce]);
 					});
 
 					trace($env, "<recursion>");
@@ -496,7 +498,7 @@ function computeNodeDSR($env, $node, $s, $e, $dsrCorrection, $opts) {
 				#print "NODE ($child->nodeName) DSR: " . $dp['dsr'][0] . ", " . $dp['dsr'][1] . "\n";
 				$env->log("trace/dsr", function() use ($child, $cs, $ce, $cTypeOf) {
 					$str = "     UPDATING " . $child->nodeName .
-						" with " . json_encode([$cs, $ce]) . "; typeof: " . ($cTypeOf ? $cTypeOf : "null");
+						" with " . PHPUtil::json_encode([$cs, $ce]) . "; typeof: " . ($cTypeOf ? $cTypeOf : "null");
 					// Set up 'dbsrc' so we can debug this
 					// $dp['dbsrc'] = $env->page->src->substring($cs, $ce);
 					return $str;

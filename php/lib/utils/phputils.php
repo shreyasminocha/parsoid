@@ -29,6 +29,9 @@ class PHPUtil {
 		return $diff;
 	}
 
+	public static function json_encode($o) {
+		return json_encode($o, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+	}
 }
 
 ?>
