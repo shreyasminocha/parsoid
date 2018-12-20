@@ -1,5 +1,47 @@
 <?php
 
+/*
+DOM transform unit test system
+
+Purpose:
+ During the porting of Parsoid to PHP, we need a system to capture and
+ replay Javascript Parsoid generated DOM transformers behavior and performance
+ so we can duplicate the functionality and verify adequate performance.
+
+ The domTests.js program works in concert with Parsoid and special
+ capabilities added to the DOMPostProcessor.js file which
+ now has DOM transformer test generation capabilities that produce test
+ files pairs from existing wiki pages or any wikitext to properly
+ validate the transformers input and output.
+
+Technical details:
+ The test validator and handler runtime emulates the normal
+ Parsoid DOMPostProcessoer behavior.
+
+ To create a test from an existing wikitext page, run the following
+ commands, for example:
+ $ node bin/parse.js --genTest dom:dsr --genDirectory ../tests --pageName Hampi
+
+ For command line options and required parameters, type:
+ $ node bin/domTest.js --help
+
+ An example command line to validate and performance test the 'Hampi'
+ wikipage created as a dom:dsr test:
+ $ node bin/domTests.php --timingMode --iterationCount 99 --transformer dsr --inputFile Hampi
+
+ Optional command line options to aid in debugging are:
+ --log --trace dsr   (causes the computeDSR.php code to emit execution trace output)
+ --debug_dump        (causes the Pre and Post transform DOM to be serialized and written
+                     (to temporaryPrePhp.txt and temporaryPostPhp.txt files)
+
+ There are a number of tests in tests/transform directory.  To regenerate
+ these, use:
+ $ tools/regen-transformTests.sh
+
+ To run these pregenerated tests, use:
+ $ npm run transformTests
+*/
+
 namespace Parsoid\Lib\Wt2Html\PP\Processors;
 
 require_once (__DIR__.'/../vendor/autoload.php');
@@ -104,10 +146,6 @@ class MockDOMPostProcessor
 			$testFilePre = mb_convert_encoding($testFilePre, 'UTF-8', mb_detect_encoding($testFilePre, 'UTF-8, ISO-8859-1', true));
 			$testFilePost = mb_convert_encoding($testFilePost, 'UTF-8', mb_detect_encoding($testFilePost, 'UTF-8, ISO-8859-1', true));
 
-			// Hack to fix trailing newline being moved around </body> by domino, remove when fixed in domino
-			// leaving this code and comment here to provide context
-			// if ($testFilePre[strlen($testFilePre) - 1] === '\n') { $testFilePre = substr($testFilePre, 0, -1); }
-			// if ($testFilePost[strlen($testFilePost)- 1] === '\n') { $testFilePost = substr($testFilePost, 0, -1); }
 			$cachedFilePre = $testFilePre;
 			$cachedFilePost = $testFilePost;
 		} else {
@@ -264,7 +302,7 @@ function runTests($argc, $argv) {
 	if (isset($opts->help)) {
 		$console->log("must specify [--timingMode] [--iterationCount=XXX] --transformer NAME --inputFile path/wikiName\n");
 		$console->log("Default iteration count is 50 if not specified\n");
-		$console->log("use --debug_dump to create pre and post dom serialized output to temporaryPre.txt and ...Post.txt\n");
+		$console->log("use --debug_dump to create pre and post dom serialized output to temporaryPrePhp.txt and ...PostPhp.txt\n");
 		return;
 	}
 
@@ -284,6 +322,8 @@ function runTests($argc, $argv) {
 	if (isset($opts->timingMode)) {
 		$console->log("Timing Mode enabled, no console output expected till test completes\n");
 	}
+
+	$console->log("Selected dom transformer = " . $opts->transformer . "\n");
 
 	$startTime = PHPUtil::getStartHRTime();
 
