@@ -51,7 +51,6 @@ use RemexHtml\Tokenizer;
 use RemexHtml\TreeBuilder;
 use RemexHtml\Serializer;
 
-require_once (__DIR__.'/../lib/config/Env.php');
 require_once (__DIR__.'/../lib/config/WikitextConstants.php');
 require_once (__DIR__.'/../lib/utils/phputils.php');
 require_once (__DIR__.'/../lib/utils/DU.php');
@@ -139,7 +138,6 @@ class MockDOMPostProcessor
 
 		$domBuilder = new DOM\DOMBuilder;
 		$serializer = new DOM\DOMSerializer($domBuilder, new Serializer\HtmlFormatter);
-		$env = new MockEnv();
 
 		$dom = buildDOM($domBuilder, $testFilePre);
 
@@ -173,16 +171,16 @@ class MockDOMPostProcessor
 				} else {
 					$options = ['attrExpansion' => false];
 				}
-				computeDSR($body, $env, $options);
+				computeDSR($body, $this->env, $options);
 				break;
 			case 'cleanupFormattingTagFixup':
-				cleanupFormattingTagFixup($dom->getElementsByTagName('body')->item(0), $env);
+				cleanupFormattingTagFixup($dom->getElementsByTagName('body')->item(0), $this->env);
 				break;
 			case 'sections' :
-				wrapSections($dom->getElementsByTagName('body')->item(0), $env, null);
+				wrapSections($dom->getElementsByTagName('body')->item(0), $this->env, null);
 				break;
 			case 'pwrap' :
-				pwrapDOM($dom->getElementsByTagName('body')->item(0), $env, null);
+				pwrapDOM($dom->getElementsByTagName('body')->item(0), $this->env, null);
 				break;
 		}
 
@@ -280,8 +278,10 @@ function runTests($argc, $argv) {
 	$numFailures = 0;
 
 	$opts = processArguments($argc, $argv);
+	if (!isset($opts->debug_dump)) {
+		$opts->debug_dump = false;
+	}
 	$opts->firstRun = true;
-	$opts->debug_dump = false;
 
 	if (isset($opts->help)) {
 		$console->log("must specify [--timingMode] [--iterationCount=XXX] --transformer NAME --inputFile path/wikiName\n");
