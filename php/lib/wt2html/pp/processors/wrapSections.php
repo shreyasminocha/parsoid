@@ -313,18 +313,10 @@ function resolveTplExtSectionConflicts(&$state) {
 	}
 }
 
-/**
- */
 function wrapSections($rootNode, $env, $options) {
 	if (!$env->wrapSections) {
 		return;
 	}
-
-	/*
-	if ($env.conf.parsoid.dumpFlags && $env.conf.parsoid.dumpFlags.has("dom:pre-sections")) {
-		DU::dumpDOM($rootNode, 'DOM: before section wrapping');
-	}
-	*/
 
 	$doc = $rootNode->ownerDocument;
 	$leadSection = [

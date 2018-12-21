@@ -662,13 +662,6 @@ function computeDSR($rootNode, $env, $options = []) {
 	$startOffset = isset($options['sourceOffsets']) ? $options['sourceOffsets'][0] : 0;
 	$endOffset = isset($options['sourceOffsets']) ? $options['sourceOffsets'][1] : mb_strlen($env->page->src);
 
-	$psd = $env->conf->parsoid;
-	if (isset($psd->dumpFlags) && $psd->dumpFlags->has("dom:pre-dsr")) {
-		DU::dumpDOM($rootNode, 'DOM: pre-DSR');
-	}
-
-	$env->log("trace/dsr", "------- tracing DSR computation -------");
-
 	// The actual computation buried in trace/debug stmts.
 	$opts = [ 'attrExpansion' => $options['attrExpansion'] ];
 	computeNodeDSR($env, $rootNode, $startOffset, $endOffset, 0, $opts);
@@ -677,10 +670,4 @@ function computeDSR($rootNode, $env, $options = []) {
 	$dp['dsr'] = [$startOffset, $endOffset, 0, 0];
 	#print "DSR: " . $dp['dsr'][0] . ", " . $dp['dsr'][1] . "\n";
 	DU::setDataParsoid( $rootNode, $dp );
-
-	$env->log("trace/dsr", "------- done tracing computation -------");
-
-	if (isset($psd->dumpFlags) && $psd->dumpFlags->has("dom:post-dsr")) {
-		DU::dumpDOM($rootNode, 'DOM: post-DSR');
-	}
 }
