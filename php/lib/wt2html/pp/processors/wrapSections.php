@@ -27,7 +27,7 @@ function portingFIXME($section) {
 	$section->setAttribute('data-parsoid', '{}');
 }
 
-function createNewSection($state, $rootNode, $sectionStack, $tplInfo, $currSection, $node, $newLevel, $pseudoSection) {
+function createNewSection(&$state, $rootNode, &$sectionStack, $tplInfo, $currSection, $node, $newLevel, $pseudoSection) {
 	/* Structure for regular (editable or not) sections
 	 *   <section data-mw-section-id="..">
 	 *     <h*>..</h*>
@@ -43,13 +43,12 @@ function createNewSection($state, $rootNode, $sectionStack, $tplInfo, $currSecti
 		"container" => $state["doc"]->createElement('section')
 	];
 
-	// console.log("NEW section @ " + $node->nodeName + "; level: "
-	// 	+ $newLevel + "; pseudo: " + $pseudoSection + "; id: "+ section.debug_id);
+	// print "NEW section @ $node->nodeName; level: $newLevel ; pseudo: $pseudoSection ; id: " . $section["debug_id"] . "\n";
 
 	/* Step 1. Get section stack to the right nesting level
 	 * 1a. Pop stack till we have a higher-level section.
 	 */
-	$stack = $sectionStack;
+	$stack = &$sectionStack;
 	while (count($stack) > 0 && $newLevel <= lastItem($stack)["level"]) {
 		array_pop($stack);
 	}
@@ -62,6 +61,7 @@ function createNewSection($state, $rootNode, $sectionStack, $tplInfo, $currSecti
 	/* Step 2: Add new section where it belongs: a parent section OR body */
 	$parentSection = count($stack) > 0 ? lastItem($stack) : null;
 	if ($parentSection) {
+		// print "Appending to " . $parentSection["debug_id"] . "\n";
 		$parentSection["container"]->appendChild($section["container"]);
 	} else {
 		$rootNode->insertBefore($section["container"], $node);
@@ -105,7 +105,7 @@ function createNewSection($state, $rootNode, $sectionStack, $tplInfo, $currSecti
 	return $section;
 }
 
-function wrapSectionsInDOM($state, $currSection, $rootNode) {
+function wrapSectionsInDOM(&$state, $currSection, $rootNode) {
 	$tplInfo = null;
 	$sectionStack = [];
 	$highestSectionLevel = 7;
@@ -218,7 +218,7 @@ function getDSR($tplInfo, $node, $start) {
 	return -1;
 }
 
-function resolveTplExtSectionConflicts($state) {
+function resolveTplExtSectionConflicts(&$state) {
 	foreach ($state["tplsAndExtsToExamine"] as $tplInfo) {
 		$s1 = $tplInfo["firstSection"] && $tplInfo["firstSection"]["container"]; // could be undefined
 		$s2 = $tplInfo["lastSection"]["container"]; // guaranteed to be non-null
@@ -343,7 +343,7 @@ function wrapSections($rootNode, $env, $options) {
 		"env" => $env,
 		"count" => 1,
 		"doc" => $doc,
-		"rootNode:" => $rootNode,
+		"rootNode" => $rootNode,
 		"sectionNumber" => 0,
 		"inTemplate" => false,
 		"tplsAndExtsToExamine" => []
