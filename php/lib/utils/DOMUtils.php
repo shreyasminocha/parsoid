@@ -117,6 +117,15 @@ class DU
 			to.insertBefore(destDoc.importNode(n, true), beforeNode);
 			n = n.nextSibling;
 		} */
+		if ($beforeNode === undefined) {
+			$beforeNode = null;
+		}
+		$n = $from->firstChild;
+		$destDoc = $to->ownerDocument;
+		while ($n) {
+			$to->insertBefore($destDoc->importNode($n, true), $beforeNode);
+			$n = $n->nextSibling;
+		}
 	}
 
 /**
@@ -356,7 +365,7 @@ class DU
 	 */
 	public static function isMarkerMeta($n, $type) {
 /*		return this.isNodeOfType(n, "META", type); */
-		return self::isNodeOfType($n, 'META', $type);
+		return self::isNodeOfType($n, 'meta', $type);
 	}
 
 	// FIXME: This would ideally belong in DiffUtils.js
@@ -374,6 +383,7 @@ class DU
 		if ($mark) {
 			return self::isMarkerMeta($node, 'mw:DiffMarker/' + $mark);
 		} else {
+			assert(false, 'Not yet ported');
 // NTR - must convert regex expression to php style
 //			return $node->nodeName === 'META' && /\bmw:DiffMarker\/\w*\b/.test($node->getAttribute('typeof'));
 		}
@@ -665,10 +675,11 @@ class DU
 		while ($n) {
 			if (self::isElt($n) && !self::isDiffMarker($n)) {
 				return false;
-			} else if (self::isText($n) &&
+			} else if (self::isText($n) // &&
 // NTR - must convert regex expression to php style
 //				(strict || !/^[ \t]*$/.test($n->nodeValue))) {
 			{ // NTR - remove this brace when line above is restored
+				assert(false, 'Not yet ported');
 				return false;
 			} else if (self::isComment($n)) {
 				return false;
