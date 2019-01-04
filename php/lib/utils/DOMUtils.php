@@ -184,6 +184,14 @@ class DU
 			nchildren -= 1;
 		}
 		return (nchildren === 0); */
+		for ($child = $node->firstChild; $child; $child = $child->nextSibling) {
+			if (!$countDiffMarkers && self::isDiffMarker($child)) {
+				continue;
+			}
+			if ($nchildren <= 0) { return false; }
+				$nchildren -= 1;
+		}
+		return ($nchildren === 0);
 	}
 
 	/**
@@ -227,6 +235,12 @@ class DU
 			node = left ? node.previousSibling : node.nextSibling;
 		}
 		return path; */
+		$path = [];
+		while ($node && $node !== $sibling) {
+			array_push($path, $node);
+			$node = $left ? $node->previousSibling : $node->nextSibling;
+		}
+		return $path;
 	}
 
 	/**
@@ -238,9 +252,13 @@ class DU
 	 */
 	public static function inSiblingOrder($n1, $n2) {
 /*		while (n1 && n1 !== n2) {
-		n1 = n1.nextSibling;
+			n1 = n1.nextSibling;
 		}
 		return n1 !== null; */
+		while ($n1 && $n1 !== $n2) {
+			$n1 = $n1->nextSibling;
+		}
+		return !isnull($n1);
 	}
 
 	/**
@@ -255,6 +273,10 @@ class DU
 			n2 = n2.parentNode;
 		}
 		return n2 !== null; */
+		while ($n2 && $n2 !== $n1) {
+			$n2 = $n2->parentNode;
+		}
+		return !isnull($n2);
 	}
 
 	/**
@@ -268,6 +290,10 @@ class DU
 			node = node.parentNode;
 		}
 		return node !== null; */
+		while ($node && $node->nodeName !== $name) {
+			$node = $node->parentNode;
+		}
+		return !isnull($node);
 	}
 
 	/**
@@ -296,6 +322,7 @@ class DU
 
 	public static function isListOrListItem($n) {
 /*		return this.isList(n) || this.isListItem(n); */
+		return self::isList($n) || self::isListItem($n);
 	}
 
 	public static function isNestedInListItem($n) {
@@ -307,6 +334,14 @@ class DU
 				parentNode = parentNode.parentNode;
 			}
 		return false; */
+		var $parentNode = $n->parentNode;
+		while ($parentNode) {
+			if (self::isListItem($parentNode)) {
+				return true;
+			}
+				$parentNode = $parentNode->parentNode;
+			}
+		return false;
 	}
 
 	public static function isNestedListOrListItem($n) {
@@ -321,6 +356,7 @@ class DU
 	 */
 	public static function isMarkerMeta($n, $type) {
 /*		return this.isNodeOfType(n, "META", type); */
+		return self::isNodeOfType($n, 'META', $type);
 	}
 
 	// FIXME: This would ideally belong in DiffUtils.js
@@ -333,6 +369,14 @@ class DU
 		} else {
 			return node.nodeName === 'META' && /\bmw:DiffMarker\/\w*\b/.test(node.getAttribute('typeof'));
 		} */
+		if (!$node) { return false; }
+
+		if ($mark) {
+			return self::isMarkerMeta($node, 'mw:DiffMarker/' + $mark);
+		} else {
+// NTR - must convert regex expression to php style
+//			return $node->nodeName === 'META' && /\bmw:DiffMarker\/\w*\b/.test($node->getAttribute('typeof'));
+		}
 	}
 
 	/**
@@ -344,14 +388,20 @@ class DU
 				return true;
 			}
 		}
-	return false; */
+		return false; */
+		for ($child = $node->firstChild; $child; $child = $child->nextSibling) {
+			if (self::isElt($child)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
 	 * Check if a node has a block-level element descendant.
 	 */
 	public static function hasBlockElementDescendant($node) {
-		for (var child = node.firstChild; child; child = child.nextSibling) {
+/*		for (var child = node.firstChild; child; child = child.nextSibling) {
 			if (this.isElt(child) &&
 				// Is a block-level node
 			(this.isBlockNode(child) ||
@@ -360,7 +410,17 @@ class DU
 				return true;
 			}
 		}
-	return false;
+		return false; */
+		for ($child = $node->firstChild; $child; $child = $child->nextSibling) {
+			if (self::isElt($child) &&
+				// Is a block-level node
+			(self::isBlockNode($child) ||
+				// or has a block-level child or grandchild or..
+			self::hasBlockElementDescendant($child))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -373,16 +433,21 @@ class DU
 
 	public static function isDocumentFragment($node) {
 /*		return node && node.nodeType === 11; */
+		return $node && $node->nodeType === 11;
 	}
 
 	public static function atTheTop($node) {
 /*		return this.isDocumentFragment(node) || this.isBody(node); */
+		return self::isDocumentFragment($node) || self::isBody($node);
 	}
 
 	public static function isContentNode($node) {
 /*		return !this.isComment(node) &&
 		!this.isIEW(node) &&
 		!this.isDiffMarker(node); */
+		return !self::isComment($node) &&
+			!self::isIEW($node) &&
+			!self::isDiffMarker($node);
 	}
 
 	/**
@@ -395,6 +460,11 @@ class DU
 			child = child.nextSibling;
 		}
 		return child; */
+		$child = $node->firstChild;
+		while ($child && !self::isContentNode($child)) {
+			$child = $child->nextSibling;
+		}
+		return $child;
 	}
 
 	/**
@@ -407,6 +477,11 @@ class DU
 			child = child.previousSibling;
 		}
 		return child; */
+		$child = $node->lastChild;
+		while ($child && !self::isContentNode($child)) {
+			$child = $child->previousSibling;
+		}
+		return $child;
 	}
 
 	public static function previousNonSepSibling($node) {
@@ -415,6 +490,11 @@ class DU
 			prev = prev.previousSibling;
 		}
 		return prev; */
+		$prev = $node->previousSibling;
+		while ($prev && !self::isContentNode($prev)) {
+			$prev = $prev->previousSibling;
+		}
+		return $prev;
 	}
 
 	public static function nextNonSepSibling($node) {
@@ -423,6 +503,11 @@ class DU
 			next = next.nextSibling;
 		}
 		return next; */
+		$next = $node->nextSibling;
+		while ($next && !self::isContentNode($next)) {
+			$next = $next->nextSibling;
+		}
+		return $next;
 	}
 
 	public static function numNonDeletedChildNodes($node) {
@@ -435,6 +520,15 @@ class DU
 			child = child.nextSibling;
 		}
 		return n; */
+		$num = 0;
+		$child = $node->firstChild;
+		while ($child) {
+			if (!self::isDiffMarker($child)) { // FIXME: This is ignoring both inserted/deleted
+				$num++;
+			}
+			$child = $child->nextSibling;
+		}
+		return $num;
 	}
 
 	/**
@@ -446,6 +540,11 @@ class DU
 			child = child.nextSibling;
 		}
 		return child; */
+		$child = $node->firstChild;
+		while ($child && self::isDiffMarker($child)) { // FIXME: This is ignoring both inserted/deleted
+			$child = $child->nextSibling;
+		}
+		return $child;
 	}
 
 	/**
@@ -457,6 +556,11 @@ class DU
 			child = child.previousSibling;
 		}
 		return child; */
+		$child = $node->lastChild;
+		while ($child && self::isDiffMarker($child)) { // FIXME: This is ignoring both inserted/deleted
+			$child = $child->previousSibling;
+		}
+		return $child;
 	}
 
 	/**
@@ -467,7 +571,12 @@ class DU
 		while (node && this.isDiffMarker(node)) { // FIXME: This is ignoring both inserted/deleted
 			node = node.nextSibling;
 		}
-		return node;
+		return node; */
+		$node = $node->nextSibling;
+		while ($node && self::isDiffMarker($node)) { // FIXME: This is ignoring both inserted/deleted
+			$node = $node->nextSibling;
+		}
+		return $node;
 	}
 
 	/**
@@ -479,6 +588,11 @@ class DU
 			node = node.previousSibling;
 		}
 		return node; */
+		$node = $node->previousSibling;
+		while ($node && self::isDiffMarker($node)) { // FIXME: This is ignoring both inserted/deleted
+			$node = $node->previousSibling;
+		}
+		return $node;
 	}
 
 	/**
@@ -495,6 +609,16 @@ class DU
 			child = child.nextSibling;
 		}
 		return true; */
+		$child = $node->firstChild;
+		while ($child) {
+			if (!self::isDiffMarker($child)
+				&& !self::isText($child)
+				&& !self::isComment($child)) {
+				return false;
+			}
+			$child = $child->nextSibling;
+		}
+		return true;
 	}
 
 	/**
@@ -509,6 +633,14 @@ class DU
 			child = child.nextSibling;
 		}
 		return true; */
+		$child = $node->firstChild;
+		while ($child) {
+			if (!self::isDiffMarker($child) && !self::isText($child)) {
+				return false;
+			}
+			$child = $child->nextSibling;
+		}
+		return true;
 	}
 
 	/**
@@ -529,6 +661,21 @@ class DU
 			n = n.nextSibling;
 		}
 		return true; */
+		$n = $node->firstChild;
+		while ($n) {
+			if (self::isElt($n) && !self::isDiffMarker($n)) {
+				return false;
+			} else if (self::isText($n) &&
+// NTR - must convert regex expression to php style
+//				(strict || !/^[ \t]*$/.test($n->nodeValue))) {
+			{ // NTR - remove this brace when line above is restored
+				return false;
+			} else if (self::isComment($n)) {
+				return false;
+			}
+			$n = $n->nextSibling;
+		}
+		return true;
 	}
 
 	/**
@@ -546,6 +693,16 @@ class DU
 			node = node.nextSibling;
 		}
 		return false; */
+		$node = $node->firstChild;
+		while ($node) {
+			if (self::isElt($node)) {
+				if ($node->nodeName === tagName || self::treeHasElement($node, $tagName)) {
+					return true;
+				}
+			}
+			$node = $node->nextSibling;
+		}
+		return false;
 	}
 
 	/**
