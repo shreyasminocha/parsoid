@@ -12,11 +12,11 @@ require_once __DIR__."/../config/WikitextConstants.php";
 require_once __DIR__."/phputils.php";
 require_once __DIR__."/TokenUtils.php";
 
-use Parsoid\Lib\PHPUtils\PHPUtil;
 use Parsoid\Lib\Config\WikitextConstants;
+use Parsoid\Lib\PHPUtils\PHPUtil;
 use Parsoid\Lib\Utils\TokenUtils;
 
-class DU
+class DOMUtils
 {
 	const TPL_META_TYPE_REGEXP = '/(?:^|\s)(mw:(?:Transclusion|Param)(?:\/End)?)(?=$|\s)/';
 	const FIRST_ENCAP_REGEXP = '/(?:^|\s)(mw:(?:Transclusion|Param|LanguageVariant|Extension(\/[^\s]+)))(?=$|\s)/';
@@ -384,7 +384,7 @@ class DU
 			return self::isMarkerMeta($node, 'mw:DiffMarker/' + $mark);
 		} else {
 			assert(false, 'Not yet ported');
-// NTR - must convert regex expression to php style
+// PORT-FIXME - must convert regex expression to php style
 //			return $node->nodeName === 'META' && /\bmw:DiffMarker\/\w*\b/.test($node->getAttribute('typeof'));
 		}
 	}
@@ -676,9 +676,9 @@ class DU
 			if (self::isElt($n) && !self::isDiffMarker($n)) {
 				return false;
 			} else if (self::isText($n) // &&
-// NTR - must convert regex expression to php style
+// PORT-FIXME - must convert regex expression to php style
 //				(strict || !/^[ \t]*$/.test($n->nodeValue))) {
-			{ // NTR - remove this brace when line above is restored
+			{ // PORT-FIXME - remove this brace when line above is restored
 				assert(false, 'Not yet ported');
 				return false;
 			} else if (self::isComment($n)) {

@@ -32,6 +32,9 @@ class PHPUtil {
 	public static function json_encode($o) {
 		return json_encode($o, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	}
-}
 
-?>
+	public static function json_decode($o) {
+		return json_decode($o);
+	}
+
+}

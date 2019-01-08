@@ -10,6 +10,18 @@
 // WIP porting from JS to PHP, mostly incomplete but first pass through
 // of variable naming complete
 
+namespace Parsoid\Lib\Utils;
+
+require_once __DIR__."/../config/WikitextConstants.php";
+require_once __DIR__."/DOMDataUtils.php";
+require_once __DIR__."/DOMUtils.php";
+//require_once __DIR__."/phputils.php";
+
+use Parsoid\Lib\Config\WikitextConstants;
+use Parsoid\Lib\Utils\DOMDataUtils;
+use Parsoid\Lib\Utils\DOMUtils;
+//use Parsoid\Lib\PHPUtils\PHPUtil;
+
 class ContentUtils {
 	/**
 	 * XML Serializer.
@@ -49,7 +61,7 @@ class ContentUtils {
 	 * @return {Node}
 	 */
 	public static function ppToDOM($html, $options) {
-		$options = $options || {};
+		$options = $options || object();
 		$node = $options->node;
 		if ($node === undefined) {
 			$node = $DOMUtils->parseHTML($html)->body;
@@ -68,7 +80,7 @@ class ContentUtils {
 	 * @return {string}
 	 */
 	public static function extractDpAndSerialize($node, $options) {
-		if (!$options) { $options = {}; }
+		if (!$options) { $options = object(); }
 		$options->captureOffsets = true;
 		$pb = $DOMDataUtils->extractPageBundle($DOMUtils->isBody($node) ? $node->ownerDocument : $node);
 		out = XMLSerializer->serialize($node, $options);
@@ -132,7 +144,7 @@ class ContentUtils {
 	 */
 	public static function dumpDOM($rootNode, $title, $options) {
 		$DiffUtils = null;
-		$options = $options || {};
+		$options = $options || object();
 		if ($options->storeDiffMark || $options->dumpFragmentMap) { $console->assert($options->env); }
 
 		function cloneData($node, $clone) {
@@ -185,7 +197,7 @@ class ContentUtils {
 				$buf->push("");
 				emit($buf, $options);
 
-				$newOpts = $Object->assign({}, $options, { dumpFragmentMap: false, quiet: true });
+				$newOpts = $Object->assign(object(), $options, { dumpFragmentMap: false, quiet: true });
 				$fragment = $options->env->fragmentMap->get($k);
 				$ContentUtils->dumpDOM($Array->isArray($fragment) ? $fragment[0] : $fragment, '', $newOpts);
 			});
