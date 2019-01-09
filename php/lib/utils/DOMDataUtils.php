@@ -117,7 +117,7 @@ class DOMDataUtils {
 		$dp = self::getDataParsoid($node);
 		if (!$dp->a) { $dp->a = object(); }
 		if (!$dp->sa) { $dp->sa = object(); }
-		if ($origVal !== undefined &&
+		if (isset($origVal) &&
 			// FIXME: This is a hack to not overwrite already shadowed info.
 			// We should either fix the call site that depends on this
 			// behaviour to do an explicit check, or double down on this
@@ -129,12 +129,16 @@ class DOMDataUtils {
 	}
 
 	public static function addAttributes($elt, $attrs) {
-		$console->assert(false, "Not yet ported");
-/*		$Object->keys($attrs)->forEach(function($k) {
-			if ($attrs[$k] !== null && $attrs[$k] !== undefined) {
-				$elt->setAttribute($k, $attrs[$k]);
+/*		Object.keys(attrs).forEach(function(k) {
+			if (attrs[k] !== null && attrs[k] !== undefined) {
+				elt.setAttribute(k, attrs[k]);
 			}
 		}); */
+		foreach($attrs as $key => $key_value) {
+			if ($key !== null && isset($key_value) {
+				$elt->setAttribute($key, $key_value);
+			}
+		}
 	}
 
 	// Similar to the method on tokens
@@ -228,7 +232,7 @@ class DOMDataUtils {
 		if (!$uid) {
 			do {
 				$docDp->counter += 1;
-				$uid = 'mw' . $JSUtils->counterToBase64($docDp->counter);
+				$uid = 'mw' . PHPUtil::counterToBase64($docDp->counter);
 			} while ($document->getElementById($uid));
 			self::addNormalizedAttribute($node, 'id', $uid, $origId);
 		}
@@ -246,10 +250,10 @@ class DOMDataUtils {
 		// $pb = JSON->stringify($obj);
 		$pb = PHPUtil::json_encode($obj);
 		$script = $doc->createElement('script');
-		self::addAttributes(script, {
-			id: 'mw-pagebundle',
-			type: 'application/x-mw-pagebundle',
-		});
+		self::addAttributes($script, array(
+			'id'=>'mw-pagebundle',
+			'type'=>'application/x-mw-pagebundle'
+		));
 		$script->appendChild($doc->createTextNode($pb));
 		$doc->head->appendChild($script);
 	}
@@ -331,6 +335,7 @@ class DOMDataUtils {
 	 * @param {Object} [options]
 	 */
 	public static function storeDataAttribs($node, $options) {
+		$console->assert(false, "Not yet fully ported");
 		if (!DOMUtils::isElt($node)) { return; }
 		$options = $options || object();
 		$console->assert(!($options->discardDataParsoid && $options->keepTmp));  // Just a sanity check
@@ -357,7 +362,8 @@ class DOMDataUtils {
 			// WARNING: keeping tmp might be a bad idea.  It can have DOM
 			// nodes, which aren't going to serialize well.  You better know
 			// of what you do.
-			if (!$options->keepTmp) { $dp->tmp = undefined; }
+		//	if (!$options->keepTmp) { $dp->tmp = undefined; }
+			if (!$options->keepTmp) { $dp->tmp = null; }
 			if ($options->storeInPageBundle) {
 				$data = $data || object();
 				$data->parsoid = $dp;

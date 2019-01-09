@@ -11,6 +11,34 @@ namespace Parsoid\Lib\PHPUtils;
 class PHPUtil {
 
 	/**
+	 * Convert a counter to a Base64 encoded string.
+	 * Padding is stripped. \,+ are replaced with _,- respectively.
+	 * Warning: Max integer is 2^31 - 1 for bitwise operations.
+	 */
+/*	counterToBase64: function(n) {
+		// eslint-disable no-bitwise
+		var arr = [];
+		do {
+			arr.unshift(n & 0xff);
+			n >>= 8;
+		} while (n > 0);
+		return (Buffer.from(arr))
+		.toString("base64")
+		.replace(/=/g, "")
+		.replace(/\//g, "_")
+		.replace(/\+/g, "-");
+			// eslint-enable no-bitwise
+		}, */
+	public static function counterToBase64($n) {
+		$arr = [];
+		do {
+			push_array($arr, ($n & 0xff));
+			$n >>= 8;
+		} while ($n > 0);
+		return rtrim(strtr(base64_encode($arr), '+/', '-_'), '=');
+	}
+
+	/**
 	 * Return accurate system time
 	 * @return {time in seconds since Jan 1 1970 GMT accurate to the microsecond}
 	 */
