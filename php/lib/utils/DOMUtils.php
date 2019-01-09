@@ -1,10 +1,16 @@
 <?php
+
 /**
 * DOM utilities for querying the DOM. This is largely independent of Parsoid
 * although some Parsoid details (diff markers, TokenUtils, inline content version)
 * have snuck in. Trying to prevent that is probably not worth the effort yet
 * at this stage of refactoring.
 */
+
+// Port based on git-commit: <423eb7f04eea94b69da1cefe7bf0b27385781371>
+// Initial porting, partially complete
+// Not fully tested, though many functions moved from DU.php were tested
+// by domTests.php
 
 namespace Parsoid\Lib\Utils;
 

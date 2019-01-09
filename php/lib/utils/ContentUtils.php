@@ -7,8 +7,9 @@
  * @module
  */
 
-// WIP porting from JS to PHP, mostly incomplete but first pass through
-// of variable naming complete
+// Port based on git-commit: <423eb7f04eea94b69da1cefe7bf0b27385781371>
+// Initial porting, partially complete
+// Not tested
 
 namespace Parsoid\Lib\Utils;
 
