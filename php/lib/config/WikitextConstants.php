@@ -2,10 +2,6 @@
 
 namespace Parsoid\Lib\Config;
 
-function object(){
-	return new stdClass();
-}
-
 function makeSet( $a ) {
 	$set = [];
 	foreach ( $a as $e ) {

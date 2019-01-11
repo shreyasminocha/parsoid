@@ -62,7 +62,7 @@ require_once (__DIR__.'/../tests/MockEnv.php');
 
 use Parsoid\Tests\MockEnv;
 use Parsoid\Lib\Config\WikitextConstants;
-use Parsoid\Lib\PHPUtils\PHPUtil;
+use Parsoid\Lib\PHPUtils\PHPUtils;
 use Parsoid\Lib\Utils\DU;
 
 $cachedState = false;
@@ -159,7 +159,7 @@ class MockDOMPostProcessor
 			}
 		}
 
-		$startTime = PHPUtil::getStartHRTime();
+		$startTime = PHPUtils::getStartHRTime();
 
 		switch ($opts->transformer) {
 			case 'dsr':
@@ -184,7 +184,7 @@ class MockDOMPostProcessor
 				break;
 		}
 
-		$this->transformTime += PHPUtil::getHRTimeDifferential($startTime);
+		$this->transformTime += PHPUtils::getHRTimeDifferential($startTime);
 
 		if ($opts->firstRun) {
 			$opts->firstRun = false;
@@ -305,11 +305,11 @@ function runTests($argc, $argv) {
 
 	$console->log("Selected dom transformer = " . $opts->transformer . "\n");
 
-	$startTime = PHPUtil::getStartHRTime();
+	$startTime = PHPUtils::getStartHRTime();
 
 	$numFailures = $manager->wikitextFile($opts);
 
-	$totalTime = PHPUtil::getHRTimeDifferential($startTime);
+	$totalTime = PHPUtils::getHRTimeDifferential($startTime);
 
 	$console->log("Total DOM test execution time        = " . $totalTime . " milliseconds\n");
 	$console->log("Total time processing DOM transforms = " . round($manager->transformTime, 3) . " milliseconds\n");

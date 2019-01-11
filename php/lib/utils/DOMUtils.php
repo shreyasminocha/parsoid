@@ -73,6 +73,7 @@ class DOMUtils
 	 * @return {Node}
 	 */
 	public static function parseHTML($html) {
+		$console->assert(false, "Not yet ported");
 /*		if (!html.match(/^<(?:!doctype|html|body)/i)) {
 			// Make sure that we parse fragments in the body. Otherwise comments,
 			// link and meta tags end up outside the html element or in the head
@@ -95,6 +96,13 @@ class DOMUtils
 			this.visitDOM(node, handler, ...args);
 			node = node.nextSibling;
 		} */
+//	PORT-FIXME determine how to call a function passed as parameter recursively
+		$handler($node, ...$args);
+		$node = $node->firstChild;
+		while ($node) {
+			self::visitDOM($node, $handler, ...$args);
+			$node = $node->nextSibling;
+		}
 	}
 
 	/**
@@ -320,23 +328,22 @@ class DOMUtils
 	 * @param {string} type Expected value of "typeof" attribute
 	 */
 	public static function isNodeOfType($n, $name, $type) {
-		return $n->nodeName === $name && $n->getAttribute("typeof") === $type;
+		return $n->nodeName === $name && $n->getAttribute('typeof') === $type;
 	}
 
 	public static function isFosterablePosition($n) {
-		return $n && isset(WikitextConstants::$HTML['FosterablePosition'][$n->parentNode->nodeName]);
+		return $n && isset( WikitextConstants::$HTML['FosterablePosition'][$n->parentNode->nodeName] );
 	}
 
 	public static function isList($n) {
-		return $n && isset( WikitextConstants::$ListTags[$n->nodeName] );
+		return $n && isset( WikitextConstants::$HTML['ListTags'][$n->nodeName] );
 	}
 
 	public static function isListItem($n) {
-/*		return n && Consts.HTML.ListItemTags.has(n.nodeName); */
+		return $n && isset( WikitextConstants::$HTML['ListItemTags'][$n->nodeName] );
 	}
 
 	public static function isListOrListItem($n) {
-/*		return this.isList(n) || this.isListItem(n); */
 		return self::isList($n) || self::isListItem($n);
 	}
 
@@ -349,7 +356,7 @@ class DOMUtils
 				parentNode = parentNode.parentNode;
 			}
 		return false; */
-		var $parentNode = $n->parentNode;
+		$parentNode = $n->parentNode;
 		while ($parentNode) {
 			if (self::isListItem($parentNode)) {
 				return true;
@@ -360,7 +367,7 @@ class DOMUtils
 	}
 
 	public static function isNestedListOrListItem($n) {
-/*		return (this.isList(n) || this.isListItem(n)) && this.isNestedInListItem(n); */
+		return (self::isList($n) || self::isListItem($n)) && self::isNestedInListItem($n);
 	}
 
 	/**
@@ -729,6 +736,7 @@ class DOMUtils
 	 */
 	public static function isTableTag($node) {
 /*		return Consts.HTML.TableTags.has(node.nodeName); */
+		return isset( WikitextConstants::$HTML['TableTags'][$n->nodeName] );
 	}
 
 	/**
@@ -738,7 +746,7 @@ class DOMUtils
 	 * @return {Node|null}
 	 */
 	public static function selectMediaElt($node) {
-/*		return node.querySelector('img, video, audio'); */
+		return $node->querySelector('img, video, audio');
 	}
 
 	/**
@@ -749,6 +757,7 @@ class DOMUtils
 	 * @return {Object}
 	 */
 	public static function findHttpEquivHeaders($doc) {
+		$console->assert(false, "Not yet ported");
 /*		return Array.from(doc.querySelectorAll('meta[http-equiv][content]'))
 			.reduce((r,el) => {
 			r[el.getAttribute('http-equiv').toLowerCase()] =
@@ -764,6 +773,8 @@ class DOMUtils
 	public static function extractInlinedContentVersion($doc) {
 /*		var el = doc.querySelector('meta[property="mw:html:version"]');
 		return el ? el.getAttribute('content') : null; */
+		$el = $doc->querySelector('meta[property="mw:html:version"]');
+		return $el ? $el->getAttribute('content') : null;
 	}
 
 }

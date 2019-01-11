@@ -21,7 +21,7 @@ require_once __DIR__."/phputils.php";
 
 use Parsoid\Lib\Config\WikitextConstants;
 use Parsoid\Lib\Utils\DOMUtils;
-use Parsoid\Lib\PHPUtils\PHPUtil;
+use Parsoid\Lib\PHPUtils\PHPUtils;
 
 
 class DOMDataUtils {
@@ -30,7 +30,7 @@ class DOMDataUtils {
 
 	public static function getNodeData($node) {
 		if (!$node->dataobject) {
-			$node->dataobject = object();
+			$node->dataobject = PHPUtils::object();
 		}
 		return $node->dataobject;
 	}
@@ -38,10 +38,10 @@ class DOMDataUtils {
 	public static function getDataParsoid($node) {
 		$data = self::getNodeData($node);
 		if (!$data->parsoid) {
-			$data->parsoid = object();
+			$data->parsoid = PHPUtils::object();
 		}
 		if (!$data->parsoid->tmp) {
-			$data->parsoid->tmp = object();
+			$data->parsoid->tmp = PHPUtil::object();
 		}
 		return $data->parsoid;
 	}
@@ -49,7 +49,7 @@ class DOMDataUtils {
 	public static function getDataMw($node) {
 		$data = self::getNodeData($node);
 		if (!$data->mw) {
-			$data->mw = object();
+			$data->mw = PHPUtils::object();
 		}
 		return $data->mw;
 	}
@@ -108,15 +108,15 @@ class DOMDataUtils {
 	 */
 	public static function setJSONAttribute($node, $name, $obj) {
 		// node.setAttribute(name, JSON.stringify(obj));
-		$node->setAttribute($name, PHPUtil::json_encode($obj));
+		$node->setAttribute($name, PHPUtils::json_encode($obj));
 	}
 
 	// Similar to the method on tokens
 	public static function setShadowInfo($node, $name, $val, $origVal) {
 		if ($val === $origVal || $origVal === null) { return; }
 		$dp = self::getDataParsoid($node);
-		if (!$dp->a) { $dp->a = object(); }
-		if (!$dp->sa) { $dp->sa = object(); }
+		if (!$dp->a) { $dp->a = PHPUtils::object(); }
+		if (!$dp->sa) { $dp->sa = PHPUtils::object(); }
 		if (isset($origVal) &&
 			// FIXME: This is a hack to not overwrite already shadowed info.
 			// We should either fix the call site that depends on this
@@ -232,7 +232,7 @@ class DOMDataUtils {
 		if (!$uid) {
 			do {
 				$docDp->counter += 1;
-				$uid = 'mw' . PHPUtil::counterToBase64($docDp->counter);
+				$uid = 'mw' . PHPUtils::counterToBase64($docDp->counter);
 			} while ($document->getElementById($uid));
 			self::addNormalizedAttribute($node, 'id', $uid, $origId);
 		}
@@ -248,7 +248,7 @@ class DOMDataUtils {
 	 */
 	public static function injectPageBundle($doc, $obj) {
 		// $pb = JSON->stringify($obj);
-		$pb = PHPUtil::json_encode($obj);
+		$pb = PHPUtils::json_encode($obj);
 		$script = $doc->createElement('script');
 		self::addAttributes($script, array(
 			'id'=>'mw-pagebundle',
@@ -299,8 +299,9 @@ class DOMDataUtils {
 	}
 
 	public static function visitAndLoadDataAttribs($node, $markNew) {
-		$console->assert(false, "Not yet ported");
-	//	DOMUtils::visitDOM($node, (...args) => self::loadDataAttribs(...$args), $markNew);
+	//	DOMUtils.visitDOM(node, (...args) => this.loadDataAttribs(...args), markNew);
+//	PORT-FIXME	the passing of functin loadDataAttribs in PHP may not be correct
+		DOMUtils::visitDOM($node, 'DOMDataUtils::loadDataAttribs', $markNew);
 	}
 
 	// These are intended be used on a document after post-processing, so that
@@ -314,7 +315,7 @@ class DOMDataUtils {
 		if (!DOMUtils::isElt($node)) {
 			return;
 		}
-		$dp = self::getJSONAttribute($node, 'data-parsoid', object());
+		$dp = self::getJSONAttribute($node, 'data-parsoid', PHPUtils::object());
 		if ($markNew) {
 			if (!$dp->tmp) { $dp->tmp = object(); }
 			$dp->tmp->isNew = ($node->getAttribute('data-parsoid') === null);
@@ -337,7 +338,7 @@ class DOMDataUtils {
 	public static function storeDataAttribs($node, $options) {
 		$console->assert(false, "Not yet fully ported");
 		if (!DOMUtils::isElt($node)) { return; }
-		$options = $options || object();
+		$options = $options || PHPUtils::object();
 		$console->assert(!($options->discardDataParsoid && $options->keepTmp));  // Just a sanity check
 		$dp = self::getDataParsoid($node);
 		// Don't modify `options`, they're reused.
@@ -365,7 +366,7 @@ class DOMDataUtils {
 		//	if (!$options->keepTmp) { $dp->tmp = undefined; }
 			if (!$options->keepTmp) { $dp->tmp = null; }
 			if ($options->storeInPageBundle) {
-				$data = $data || object();
+				$data = $data || PHPUtils::object();
 				$data->parsoid = $dp;
 			} else {
 				self::setJSONAttribute($node, 'data-parsoid', $dp);
@@ -377,7 +378,7 @@ class DOMDataUtils {
 				// The pagebundle didn't have data-mw before 999.x
 // PORT-FIXME - semver equivalent code required
 				$semver->satisfies($options->env->outputContentVersion, '^999.0.0')) {
-				$data = $data || object();
+				$data = $data || PHPUtils::object();
 				$data->mw = self::getDataMw($node);
 			} else {
 				self::setJSONAttribute($node, 'data-mw', self::getDataMw($node));

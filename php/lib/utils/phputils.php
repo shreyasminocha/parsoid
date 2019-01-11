@@ -8,7 +8,16 @@ namespace Parsoid\Lib\PHPUtils;
 * @module
 */
 
-class PHPUtil {
+// Port based on git-commit: <423eb7f04eea94b69da1cefe7bf0b27385781371>
+// Porting in jsutils as needed by other code
+// Not tested, all code that is not ported has assert or PORT-FIXME
+
+
+class PHPUtils {
+
+	public static function object(){
+		return new stdClass();
+	}
 
 	/**
 	 * Convert a counter to a Base64 encoded string.

@@ -68,7 +68,7 @@ use Parsoid\Tests\MockEnv;
 
 use Parsoid\Lib\Config;
 use Parsoid\Lib\Config\WikitextConstants;
-use Parsoid\Lib\PHPUtils\PHPUtil;
+use Parsoid\Lib\PHPUtils\PHPUtils;
 use Parsoid\Lib\Wt2html\KV;
 use Parsoid\Lib\Wt2html\TagTk;
 use Parsoid\Lib\Wt2html\EndTagTk;
@@ -168,7 +168,7 @@ class MockTTM {
 
 	public function addTransform($transformation, $debugName, $rank, $type, $name = null) {
 		global $console;
-		$startTime = PHPUtil::getStartHRTime();
+		$startTime = PHPUtils::getStartHRTime();
 
 		$this->pipeLineModified = true;
 
@@ -200,7 +200,7 @@ class MockTTM {
 			$this->tokenTransformers[$key][] = $t;
 			usort($this->tokenTransformers[$key], "self::_cmpTransformations");
 		}
-		$this->addXformTime += PHPUtil::getHRTimeDifferential($startTime);
+		$this->addXformTime += PHPUtils::getHRTimeDifferential($startTime);
 	}
 
 	private function removeMatchingTransform(&$transformers, $rank) {
@@ -213,7 +213,7 @@ class MockTTM {
 	}
 
 	public function removeTransform($rank, $type, $name = null) {
-		$startTime = PHPUtil::getStartHRTime();
+		$startTime = PHPUtils::getStartHRTime();
 
 		$this->pipeLineModified = true;
 		if ($type === 'any') {
@@ -225,11 +225,11 @@ class MockTTM {
 				$this->removeMatchingTransform($this->tokenTransformers[$key], $rank);
 			}
 		}
-		$this->removeXformTime += PHPUtil::getHRTimeDifferential($startTime);
+		$this->removeXformTime += PHPUtils::getHRTimeDifferential($startTime);
 	}
 
 	public function getTransforms($token, $minRank) {
-		$startTime = PHPUtil::getStartHRTime();
+		$startTime = PHPUtils::getStartHRTime();
 
 		$isStr = gettype($token) === "string";
 		$type = $isStr ? "String" : $token->getType();
@@ -251,7 +251,7 @@ class MockTTM {
 				$i += 1;
 			}
 		}
-		$this->getXformTime += PHPUtil::getHRTimeDifferential($startTime);
+		$this->getXformTime += PHPUtils::getHRTimeDifferential($startTime);
 		return [ 'first' => $i, 'transforms' => $tts, 'empty' => ($i >= sizeof($tts)) ];
 	}
 
@@ -297,7 +297,7 @@ class MockTTM {
 					break;
 				case '[':	// desired result json string for test result verification
 					if (isset($result) && sizeof($result['tokens']) !== 0) {
-						$stringResult = PHPUtil::json_encode($result['tokens']);
+						$stringResult = PHPUtils::json_encode($result['tokens']);
 						# print "SR  : $stringResult\n";
 						# print "LINE: $line\n";
 						$line = preg_replace('/{}/', '[]', $line);
@@ -351,7 +351,7 @@ class MockTTM {
 					}
 
 					# print "PROCESSING $line\n";
-					$startTime = PHPUtil::getStartHRTime();
+					$startTime = PHPUtils::getStartHRTime();
 
 					$ts = $this->getTransforms($token, 2.0);
 
@@ -371,7 +371,7 @@ class MockTTM {
 						}
 						$j++;
 					}
-					$this->tokenTime += PHPUtil::getHRTimeDifferential($startTime);
+					$this->tokenTime += PHPUtils::getHRTimeDifferential($startTime);
 					break;
 			}
 		}
@@ -457,7 +457,7 @@ class MockTTM {
 				$line = substr($testLines[$p[$element]], 36);
 				switch ($line{0}) {
 					case '[':	// desired result json string for test result verification
-						$stringResult = PHPUtil::json_encode($result['tokens']);
+						$stringResult = PHPUtils::json_encode($result['tokens']);
 						# print "SR  : $stringResult\n";
 						$line = preg_replace('/{}/', '[]', $line);
 						$stringResult = preg_replace('/{}/', '[]', $stringResult);
@@ -509,7 +509,7 @@ class MockTTM {
 						}
 
 						# print "PROCESSING $line\n";
-						$startTime = PHPUtil::getStartHRTime();
+						$startTime = PHPUtils::getStartHRTime();
 
 						$ts = $this->getTransforms($token, 2.0);
 
@@ -527,7 +527,7 @@ class MockTTM {
 							}
 							$j++;
 						}
-						$this->tokenTime += PHPUtil::getHRTimeDifferential($startTime);
+						$this->tokenTime += PHPUtils::getHRTimeDifferential($startTime);
 						break;
 				}
 			}
@@ -639,7 +639,7 @@ function runTests($argc, $argv) {
 		$console->log("Timing Mode enabled, no console output expected till test completes\n");
 	}
 
-	$startTime = PHPUtil::getStartHRTime();
+	$startTime = PHPUtils::getStartHRTime();
 
 	if (isset($opts->QuoteTransformer)) {
 		$qt = new Parsoid\Lib\Wt2html\TT\QuoteTransformer($manager, function () {});
@@ -670,7 +670,7 @@ function runTests($argc, $argv) {
 		$numFailures++;
 	}
 
-	$totalTime = PHPUtil::getHRTimeDifferential($startTime);
+	$totalTime = PHPUtils::getHRTimeDifferential($startTime);
 	$console->log('Total transformer execution time = ' . $totalTime . " milliseconds\n");
 	$console->log('Total time processing tokens     = ' . round($manager->tokenTime, 3) . " milliseconds\n");
 	$console->log('Total time adding transformers   = ' . round($manager->addXformTime, 3) . " milliseconds\n");
